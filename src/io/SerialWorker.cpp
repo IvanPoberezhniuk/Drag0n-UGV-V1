@@ -157,17 +157,19 @@ void SerialWorker::processRxBytes(const uint8_t* data, int len) {
 void SerialWorker::parseTelemetryFrame(uint8_t type, const uint8_t* payload, size_t len) {
     if (type == CRSF_FRAMETYPE_LINK_STATISTICS && len >= 10) {
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
-        auto& t = m_state.registry.get<TelemetryState>(m_state.ugv);
-        t.rssi1 = payload[0]; // uplink RSSI ant1 (positive, actual is -dBm)
-        t.rssi2 = payload[1]; // uplink RSSI ant2
-        t.lq    = payload[2]; // uplink link quality (0-100%)
-        t.valid = true;
+        auto& t        = m_state.registry.get<TelemetryState>(m_state.ugv);
+        t.rssi1        = payload[0];
+        t.rssi2        = payload[1];
+        t.lq           = payload[2];
+        t.valid        = true;
+        t.lastReceived = Clock::now();
     } else if (type == CRSF_FRAMETYPE_BATTERY_SENSOR && len >= 8) {
         float voltage = static_cast<float>((payload[0] << 8) | payload[1]) * 0.1f;
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
         auto& t          = m_state.registry.get<TelemetryState>(m_state.ugv);
         t.batteryVoltage = voltage;
         t.valid          = true;
+        t.lastReceived   = Clock::now();
     }
 }
 
@@ -205,6 +207,20 @@ void SerialWorker::loop() {
 
         if (m_serial.isOpen()) {
             readAndParse();
+
+            // Invalidate telemetry if no frame received in 5 seconds
+            {
+                std::lock_guard<std::mutex> lk(m_state.registryMutex);
+                auto& t = m_state.registry.get<TelemetryState>(m_state.ugv);
+                if (t.valid) {
+                    auto msSince = std::chrono::duration_cast<Ms>(
+                        Clock::now() - t.lastReceived).count();
+                    if (msSince > 5000) {
+                        t.valid = false;
+                        spdlog::warn("SerialWorker: telemetry timeout ({}ms)", msSince);
+                    }
+                }
+            }
 
             auto rc  = DroneControlService::mapChannels(ctrl, m_config.channels);
             auto pkt = buildRcChannelsPacket(rc);

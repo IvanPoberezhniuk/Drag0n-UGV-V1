@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 
 struct TelemetryState {
     int   rssi1          = 0;
@@ -8,4 +9,5 @@ struct TelemetryState {
     float speed          = 0.0f;
     float heading        = 0.0f;
     bool  valid          = false;
+    std::chrono::steady_clock::time_point lastReceived{};
 };

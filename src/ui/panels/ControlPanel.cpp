@@ -3,7 +3,7 @@
 #include "core/SafetyState.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QSlider>
+#include <QProgressBar>
 #include <QPushButton>
 #include <QLabel>
 #include <QRadioButton>
@@ -17,30 +17,26 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
 {
     auto* layout = new QVBoxLayout(this);
 
-    // Throttle row
+    auto makeBar = [this](const QString& labelText, QProgressBar*& bar, QLabel*& valLabel,
+                          QHBoxLayout* row) {
+        row->addWidget(new QLabel(labelText, this));
+        bar = new QProgressBar(this);
+        bar->setRange(-100, 100);
+        bar->setValue(0);
+        bar->setFormat("%v%");
+        bar->setTextVisible(true);
+        row->addWidget(bar, 1);
+        valLabel = new QLabel("0.00", this);
+        valLabel->setMinimumWidth(36);
+        row->addWidget(valLabel);
+    };
+
     auto* thrRow = new QHBoxLayout;
-    thrRow->addWidget(new QLabel("Throttle", this));
-    m_throttleSlider = new QSlider(Qt::Horizontal, this);
-    m_throttleSlider->setRange(-100, 100);
-    m_throttleSlider->setValue(0);
-    m_throttleSlider->setEnabled(false);
-    thrRow->addWidget(m_throttleSlider, 1);
-    m_throttleLabel = new QLabel("0.00", this);
-    m_throttleLabel->setMinimumWidth(36);
-    thrRow->addWidget(m_throttleLabel);
+    makeBar("Throttle", m_throttleBar, m_throttleLabel, thrRow);
     layout->addLayout(thrRow);
 
-    // Steering row
     auto* strRow = new QHBoxLayout;
-    strRow->addWidget(new QLabel("Steering", this));
-    m_steeringSlider = new QSlider(Qt::Horizontal, this);
-    m_steeringSlider->setRange(-100, 100);
-    m_steeringSlider->setValue(0);
-    m_steeringSlider->setEnabled(false);
-    strRow->addWidget(m_steeringSlider, 1);
-    m_steeringLabel = new QLabel("0.00", this);
-    m_steeringLabel->setMinimumWidth(36);
-    strRow->addWidget(m_steeringLabel);
+    makeBar("Steering", m_steeringBar, m_steeringLabel, strRow);
     layout->addLayout(strRow);
 
     // Arm + ESTOP
@@ -126,9 +122,9 @@ void ControlPanel::refresh() {
         safety = m_state.registry.get<SafetyState>(m_state.ugv);
     }
 
-    m_throttleSlider->setValue(static_cast<int>(ctrl.throttle * 100));
+    m_throttleBar->setValue(static_cast<int>(ctrl.throttle * 100));
     m_throttleLabel->setText(QString::number(ctrl.throttle, 'f', 2));
-    m_steeringSlider->setValue(static_cast<int>(ctrl.steering * 100));
+    m_steeringBar->setValue(static_cast<int>(ctrl.steering * 100));
     m_steeringLabel->setText(QString::number(ctrl.steering, 'f', 2));
 
     if (ctrl.armed) {

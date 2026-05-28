@@ -2,7 +2,7 @@
 #include <QWidget>
 #include "core/AppState.h"
 
-class QSlider;
+class QProgressBar;
 class QPushButton;
 class QLabel;
 class QRadioButton;
@@ -16,9 +16,9 @@ public:
 private:
     AppState& m_state;
 
-    QSlider*      m_throttleSlider = nullptr;
+    QProgressBar* m_throttleBar    = nullptr;
     QLabel*       m_throttleLabel  = nullptr;
-    QSlider*      m_steeringSlider = nullptr;
+    QProgressBar* m_steeringBar    = nullptr;
     QLabel*       m_steeringLabel  = nullptr;
     QPushButton*  m_armBtn         = nullptr;
     QPushButton*  m_estopBtn       = nullptr;
