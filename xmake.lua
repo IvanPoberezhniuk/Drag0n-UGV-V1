@@ -15,6 +15,8 @@ add_requires("entt")
 target("connectionApp")
     add_rules("qt.widgetapp")
     add_files(
+        "resources/app.qrc",
+        "app.rc",
         "src/main.cpp",
         "src/ui/MainWindow.cpp",
         "src/ui/panels/ConnectionPanel.cpp",

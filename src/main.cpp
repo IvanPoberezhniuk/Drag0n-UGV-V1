@@ -3,6 +3,7 @@
 #endif
 #include <windows.h>
 
+#include <QIcon>
 #include <QApplication>
 #include <QPalette>
 #include <QMessageBox>
@@ -51,6 +52,7 @@ int main(int argc, char** argv) {
     }
 
     QApplication app(argc, argv);
+    app.setWindowIcon(QIcon(":/icon.png"));
 
     // Single-instance guard via Win32 named mutex
     HANDLE instanceMutex = CreateMutexW(nullptr, TRUE, L"connectionApp-single-instance");
