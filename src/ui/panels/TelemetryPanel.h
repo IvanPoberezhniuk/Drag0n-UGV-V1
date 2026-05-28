@@ -1,14 +1,14 @@
 #pragma once
-#include <QWidget>
+#include "ui/IPanel.h"
 #include "core/AppState.h"
 
 class QLabel;
 class QProgressBar;
 
-class TelemetryPanel : public QWidget {
+class TelemetryPanel : public IPanel {
 public:
     explicit TelemetryPanel(AppState& state, QWidget* parent = nullptr);
-    void refresh();
+    void refresh() override;
 
 private:
     AppState& m_state;

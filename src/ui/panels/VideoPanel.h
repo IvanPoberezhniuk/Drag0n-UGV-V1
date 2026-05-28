@@ -1,17 +1,17 @@
 #pragma once
+#include "ui/IPanel.h"
 #include "core/AppState.h"
-#include <QWidget>
 #include <QImage>
 #include <random>
 
 class WheelPanel;
 class CompassBar;
 
-class VideoPanel : public QWidget {
+class VideoPanel : public IPanel {
     Q_OBJECT
 public:
     explicit VideoPanel(AppState& state, QWidget* parent = nullptr);
-    void refresh();
+    void refresh() override;
 
 protected:
     void paintEvent(QPaintEvent*) override;

@@ -1,4 +1,5 @@
 #include "ui/CompassBar.h"
+#include "ui/Theme.h"
 #include <QPainter>
 #include <QPolygon>
 #include <cmath>
@@ -66,7 +67,8 @@ void CompassBar::paintEvent(QPaintEvent*) {
     p.setFont(f);
     QFontMetrics fm(f);
 
-    const QColor tickColor(220, 220, 220, 210);
+    QColor tickColor = Theme::textPrimary;
+    tickColor.setAlpha(210);
     const int tickBase  = H - 1;
     const int majorH    = 14;
     const int mediumH   = 9;

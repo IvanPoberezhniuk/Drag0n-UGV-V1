@@ -1,4 +1,5 @@
 #include "ui/panels/LegendPanel.h"
+#include "ui/Theme.h"
 #include <QPainter>
 #include <QFont>
 
@@ -6,10 +7,9 @@ static const QColor kKeyBg    {70,  70,  70};
 static const QColor kKeyBorder{110, 110, 110};
 static const QColor kKeyText  {230, 230, 230};
 static const QColor kDimText  {160, 160, 160};
-static const QColor kGreen    {0,   200, 80};
 
 LegendPanel::LegendPanel(AppState& state, QWidget* parent)
-    : QWidget(parent), m_state(state) {
+    : IPanel(parent), m_state(state) {
     setMinimumWidth(300);
 }
 
@@ -69,9 +69,9 @@ void LegendPanel::drawCircularKey(QPainter& p, int x, int y, int size,
 void LegendPanel::drawSectionTitle(QPainter& p, int x, int y, const QString& text) {
     QFont f = font(); f.setBold(true);
     p.setFont(f);
-    p.setPen(kGreen);
+    p.setPen(Theme::connectedGreen);
     p.drawText(x, y, text);
-    p.setPen(QPen(kGreen.darker(150), 1));
+    p.setPen(QPen(Theme::connectedGreen.darker(150), 1));
     p.drawLine(x, y + 4, x + 280, y + 4);
 }
 

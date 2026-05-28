@@ -1,13 +1,10 @@
 #include "services/SafetyService.h"
+#include "core/ChronoTypes.h"
 #include <spdlog/spdlog.h>
-#include <chrono>
 
 namespace SafetyService {
 
 void apply(ControlState& ctrl, SafetyState& safety, uint32_t failsafeTimeoutMs) {
-    using Clock = std::chrono::steady_clock;
-    using Ms = std::chrono::milliseconds;
-
     auto now = Clock::now();
     auto msSince = std::chrono::duration_cast<Ms>(now - ctrl.lastUpdated).count();
 

@@ -1,12 +1,12 @@
 #pragma once
-#include <QWidget>
+#include "ui/IPanel.h"
 #include <QColor>
 #include "core/AppState.h"
 
-class LegendPanel : public QWidget {
+class LegendPanel : public IPanel {
 public:
     explicit LegendPanel(AppState& state, QWidget* parent = nullptr);
-    void refresh();
+    void refresh() override;
     QSize sizeHint() const override;
 
 protected:

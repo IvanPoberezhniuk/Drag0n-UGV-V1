@@ -1,13 +1,14 @@
 #include "ui/panels/ConnectionPanel.h"
 #include "io/SerialPort.h"
 #include "core/ConnectionState.h"
+#include "core/StateSnapshot.h"
+#include "ui/Theme.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QComboBox>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QLabel>
-#include <mutex>
 
 static QString statusText(ConnectionStatus s) {
     switch (s) {
@@ -21,17 +22,17 @@ static QString statusText(ConnectionStatus s) {
 
 static QString statusStyle(ConnectionStatus s) {
     switch (s) {
-        case ConnectionStatus::Disconnected: return "color: #888888;";
-        case ConnectionStatus::Connecting:   return "color: #ffcc00;";
-        case ConnectionStatus::Connected:    return "color: #00e633;";
-        case ConnectionStatus::Error:        return "color: #ff3333;";
+        case ConnectionStatus::Disconnected: return Theme::colorSS(Theme::textMuted);
+        case ConnectionStatus::Connecting:   return Theme::colorSS(Theme::warningYellow);
+        case ConnectionStatus::Connected:    return Theme::colorSS(Theme::successGreen);
+        case ConnectionStatus::Error:        return Theme::colorSS(Theme::errorRed);
     }
     return "";
 }
 
 ConnectionPanel::ConnectionPanel(AppState& state, SerialWorker& worker,
                                  const AppConfig& config, QWidget* parent)
-    : QWidget(parent), m_state(state), m_worker(worker)
+    : IPanel(parent), m_state(state), m_worker(worker)
 {
     auto* layout = new QVBoxLayout(this);
 
@@ -83,11 +84,7 @@ void ConnectionPanel::onRefreshClicked() {
 }
 
 void ConnectionPanel::onConnectClicked() {
-    ConnectionState conn;
-    {
-        std::lock_guard<std::mutex> lk(m_state.registryMutex);
-        conn = m_state.registry.get<ConnectionState>(m_state.ugv);
-    }
+    auto conn = snapshot<ConnectionState>(m_state);
 
     bool active = conn.status == ConnectionStatus::Connected ||
                   conn.status == ConnectionStatus::Connecting;
@@ -104,11 +101,7 @@ void ConnectionPanel::onConnectClicked() {
 }
 
 void ConnectionPanel::refresh() {
-    ConnectionState conn;
-    {
-        std::lock_guard<std::mutex> lk(m_state.registryMutex);
-        conn = m_state.registry.get<ConnectionState>(m_state.ugv);
-    }
+    auto conn = snapshot<ConnectionState>(m_state);
 
     QString label = "● " + statusText(conn.status);
     if (!conn.errorMessage.empty())

@@ -9,7 +9,7 @@ static constexpr int kNoiseW = 480;
 static constexpr int kNoiseH = 360;
 
 VideoPanel::VideoPanel(AppState& state, QWidget* parent)
-    : QWidget(parent), m_state(state)
+    : IPanel(parent), m_state(state)
 {
     setMinimumSize(320, 240);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);

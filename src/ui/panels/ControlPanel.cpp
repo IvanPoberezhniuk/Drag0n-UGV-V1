@@ -1,6 +1,7 @@
 #include "ui/panels/ControlPanel.h"
 #include "core/ControlState.h"
 #include "core/SafetyState.h"
+#include "core/StateSnapshot.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QProgressBar>
@@ -59,7 +60,7 @@ void ToggleSwitch::paintEvent(QPaintEvent*) {
 }
 
 ControlPanel::ControlPanel(AppState& state, QWidget* parent)
-    : QWidget(parent), m_state(state)
+    : IPanel(parent), m_state(state)
 {
     auto* layout = new QVBoxLayout(this);
 
@@ -159,13 +160,7 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
 }
 
 void ControlPanel::refresh() {
-    ControlState ctrl;
-    SafetyState  safety;
-    {
-        std::lock_guard<std::mutex> lk(m_state.registryMutex);
-        ctrl   = m_state.registry.get<ControlState>(m_state.ugv);
-        safety = m_state.registry.get<SafetyState>(m_state.ugv);
-    }
+    auto [ctrl, safety] = snapshot<ControlState, SafetyState>(m_state);
 
     m_throttleBar->setValue(static_cast<int>(ctrl.throttle * 100));
     m_throttleLabel->setText(QString::number(ctrl.throttle, 'f', 2));

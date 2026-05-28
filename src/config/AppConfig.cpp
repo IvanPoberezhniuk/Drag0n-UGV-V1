@@ -53,6 +53,14 @@ AppConfig AppConfig::load(const std::string& path) {
             if (u.contains("fontSize")) cfg.ui.fontSize = u["fontSize"].get<int>();
         }
 
+        if (j.contains("input")) {
+            auto& inp = j["input"];
+            if (inp.contains("stickDeadzone"))   cfg.input.stickDeadzone   = inp["stickDeadzone"].get<float>();
+            if (inp.contains("triggerDeadzone")) cfg.input.triggerDeadzone = inp["triggerDeadzone"].get<float>();
+            if (inp.contains("keyAccel"))        cfg.input.keyAccel        = inp["keyAccel"].get<float>();
+            if (inp.contains("keyDecel"))        cfg.input.keyDecel        = inp["keyDecel"].get<float>();
+        }
+
         spdlog::info("AppConfig: loaded '{}' — serial={} @{} baud, {}Hz",
             path, cfg.serial.port, cfg.serial.baudrate, cfg.control.rateHz);
     } catch (const std::exception& e) {

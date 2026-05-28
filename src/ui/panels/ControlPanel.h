@@ -1,6 +1,6 @@
 #pragma once
 #include <QAbstractButton>
-#include <QWidget>
+#include "ui/IPanel.h"
 #include "core/AppState.h"
 
 class QProgressBar;
@@ -18,10 +18,10 @@ private:
     QString m_label;
 };
 
-class ControlPanel : public QWidget {
+class ControlPanel : public IPanel {
 public:
     explicit ControlPanel(AppState& state, QWidget* parent = nullptr);
-    void refresh();
+    void refresh() override;
 
 private:
     AppState& m_state;

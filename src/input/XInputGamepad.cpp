@@ -4,26 +4,16 @@
 #include <windows.h>
 #include <xinput.h>
 #include "input/XInputGamepad.h"
+#include "input/InputUtils.h"
 #include <spdlog/spdlog.h>
 #include <algorithm>
-#include <cmath>
 
-XInputGamepad::XInputGamepad(int playerIndex) : m_index(playerIndex) {}
+XInputGamepad::XInputGamepad(int playerIndex, const AppConfig::InputCfg& cfg)
+    : m_index(playerIndex), m_cfg(cfg) {}
 
 bool XInputGamepad::isConnected() const { return m_connected; }
 
 const char* XInputGamepad::name() const { return "Xbox Controller (XInput)"; }
-
-static float applyDeadzone(float v, float dz) {
-    if (std::fabs(v) < dz) return 0.0f;
-    return (v - std::copysign(dz, v)) / (1.0f - dz);
-}
-
-static bool risingEdge(bool cur, bool& prev) {
-    bool edge = cur && !prev;
-    prev = cur;
-    return edge;
-}
 
 InputFrame XInputGamepad::poll() {
     InputFrame f;
@@ -45,33 +35,33 @@ InputFrame XInputGamepad::poll() {
     float steerRaw = pad.sThumbLX < 0
         ? static_cast<float>(pad.sThumbLX) / 32768.0f
         : static_cast<float>(pad.sThumbLX) / 32767.0f;
-    f.steering = applyDeadzone(steerRaw, kDeadzone);
+    f.steering = InputUtils::applyDeadzone(steerRaw, m_cfg.stickDeadzone);
 
     // RT - LT → throttle  (0..255)
     float rt = static_cast<float>(pad.bRightTrigger) / 255.0f;
     float lt = static_cast<float>(pad.bLeftTrigger)  / 255.0f;
-    if (rt < kTriggerDeadzone) rt = 0.0f;
-    if (lt < kTriggerDeadzone) lt = 0.0f;
+    if (rt < m_cfg.triggerDeadzone) rt = 0.0f;
+    if (lt < m_cfg.triggerDeadzone) lt = 0.0f;
     f.throttle = std::max(-1.0f, std::min(1.0f, rt - lt));
 
-    f.hasAxes = (f.throttle != 0.0f || f.steering != 0.0f);
+    f.hasAxes  = (f.throttle != 0.0f || f.steering != 0.0f);
     f.steering = std::max(-1.0f, std::min(1.0f, f.steering));
 
     bool btnA = (pad.wButtons & XINPUT_GAMEPAD_A) != 0;
     bool btnB = (pad.wButtons & XINPUT_GAMEPAD_B) != 0;
-    bool btnX = (pad.wButtons & XINPUT_GAMEPAD_X) != 0;
     bool btnY = (pad.wButtons & XINPUT_GAMEPAD_Y) != 0;
+    bool btnX = (pad.wButtons & XINPUT_GAMEPAD_X) != 0;
 
     // A = arm/disarm toggle
-    if (risingEdge(btnA, m_prevA)) {
+    if (m_btnEdge[0].rising(btnA)) {
         m_armed = !m_armed;
         if (m_armed) f.arm    = true;
         else         f.disarm = true;
     }
 
-    if (risingEdge(btnB, m_prevB)) f.estop        = true;
-    if (risingEdge(btnY, m_prevY)) f.toggleLights  = true;
-    if (risingEdge(btnX, m_prevX)) {
+    if (m_btnEdge[1].rising(btnB)) f.estop       = true;
+    if (m_btnEdge[2].rising(btnY)) f.toggleLights = true;
+    if (m_btnEdge[3].rising(btnX)) {
         m_driveMode = m_driveMode % 3 + 1;
         f.setDriveMode = m_driveMode;
     }

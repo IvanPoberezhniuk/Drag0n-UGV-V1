@@ -12,12 +12,8 @@
 #include "services/ControlService.h"
 #include "crsf/CrsfPacket.h"
 #include <spdlog/spdlog.h>
-#include <chrono>
+#include "core/ChronoTypes.h"
 #include <thread>
-
-using Clock = std::chrono::steady_clock;
-using Ms    = std::chrono::milliseconds;
-using Us    = std::chrono::microseconds;
 
 SerialWorker::SerialWorker(AppState& state, const AppConfig& config)
     : m_state(state), m_config(config) {}
@@ -222,7 +218,7 @@ void SerialWorker::loop() {
                 }
             }
 
-            auto rc  = DroneControlService::mapChannels(ctrl, m_config.channels);
+            auto rc  = ChannelMapper::mapChannels(ctrl, m_config.channels);
             auto pkt = buildRcChannelsPacket(rc);
             if (m_serial.write(pkt.data(), pkt.size())) {
                 ++frameCount;

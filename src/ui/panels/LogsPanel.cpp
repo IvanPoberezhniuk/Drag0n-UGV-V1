@@ -1,5 +1,6 @@
 #include "ui/panels/LogsPanel.h"
 #include "core/LogBuffer.h"
+#include "ui/Theme.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QCheckBox>
@@ -11,12 +12,12 @@
 
 static QString levelColor(spdlog::level::level_enum lvl) {
     switch (lvl) {
-        case spdlog::level::debug:    return "#999999";
-        case spdlog::level::info:     return "#e5e5e5";
-        case spdlog::level::warn:     return "#ffcc00";
+        case spdlog::level::debug:    return Theme::textDim.name();
+        case spdlog::level::info:     return Theme::textPrimary.name();
+        case spdlog::level::warn:     return Theme::warningYellow.name();
         case spdlog::level::err:
-        case spdlog::level::critical: return "#ff4444";
-        default:                      return "#e5e5e5";
+        case spdlog::level::critical: return Theme::errorRed.name();
+        default:                      return Theme::textPrimary.name();
     }
 }
 
@@ -35,7 +36,7 @@ static bool shouldShow(spdlog::level::level_enum lvl,
 }
 
 LogsPanel::LogsPanel(AppState& state, QWidget* parent)
-    : QWidget(parent), m_state(state)
+    : IPanel(parent), m_state(state)
 {
     auto* layout = new QVBoxLayout(this);
 

@@ -26,6 +26,13 @@ struct AppConfig {
         int fontSize = 12;
     } ui;
 
+    struct InputCfg {
+        float stickDeadzone   = 0.12f;
+        float triggerDeadzone = 0.05f;
+        float keyAccel        = 5.0f;
+        float keyDecel        = 10.0f;
+    } input;
+
     static AppConfig load(const std::string& path);
     static AppConfig defaults();
 };

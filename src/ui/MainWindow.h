@@ -1,10 +1,12 @@
 #pragma once
 #include <QMainWindow>
 #include <QTimer>
+#include <vector>
 #include "core/AppState.h"
 #include "config/AppConfig.h"
 #include "io/SerialWorker.h"
 #include "input/InputManager.h"
+#include "ui/IPanel.h"
 
 class ConnectionPanel;
 class ControlPanel;
@@ -48,6 +50,8 @@ private:
     QDockWidget* m_telemetryDock = nullptr;
     QDockWidget* m_logsDock      = nullptr;
     QDockWidget* m_legendDock    = nullptr;
+
+    std::vector<IPanel*> m_panels;
 
     QTimer m_timer;
     bool   m_layoutDone        = false;

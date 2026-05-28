@@ -1,15 +1,15 @@
 #pragma once
-#include <QWidget>
+#include "ui/IPanel.h"
 #include <cstddef>
 #include "core/AppState.h"
 
 class QCheckBox;
 class QTextEdit;
 
-class LogsPanel : public QWidget {
+class LogsPanel : public IPanel {
 public:
     explicit LogsPanel(AppState& state, QWidget* parent = nullptr);
-    void refresh();
+    void refresh() override;
 
 private:
     AppState& m_state;

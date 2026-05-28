@@ -130,8 +130,8 @@ int main(int argc, char** argv) {
 
     SerialWorker  worker(state, config);
     InputManager  inputManager;
-    inputManager.addSource(std::make_unique<KeyboardInput>(state.keyBindings));
-    inputManager.addSource(std::make_unique<XInputGamepad>(0));
+    inputManager.addSource(std::make_unique<KeyboardInput>(state.keyBindings, config.input));
+    inputManager.addSource(std::make_unique<XInputGamepad>(0, config.input));
 
     if (!config.serial.port.empty()) {
         worker.requestConnect(config.serial.port, config.serial.baudrate);

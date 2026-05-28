@@ -1,19 +1,20 @@
 #include "ui/panels/TelemetryPanel.h"
 #include "core/TelemetryState.h"
+#include "core/StateSnapshot.h"
+#include "ui/Theme.h"
 #include <QVBoxLayout>
 #include <QFormLayout>
 #include <QLabel>
 #include <QProgressBar>
-#include <mutex>
 
 TelemetryPanel::TelemetryPanel(AppState& state, QWidget* parent)
-    : QWidget(parent), m_state(state)
+    : IPanel(parent), m_state(state)
 {
     auto* layout = new QVBoxLayout(this);
 
     m_noDataLabel = new QLabel("No telemetry data\n(waiting for CRSF frames from RX)", this);
     m_noDataLabel->setAlignment(Qt::AlignCenter);
-    m_noDataLabel->setStyleSheet("color: #888888;");
+    m_noDataLabel->setStyleSheet(Theme::colorSS(Theme::textMuted));
     layout->addWidget(m_noDataLabel);
 
     m_dataWidget = new QWidget(this);
@@ -49,11 +50,7 @@ TelemetryPanel::TelemetryPanel(AppState& state, QWidget* parent)
 }
 
 void TelemetryPanel::refresh() {
-    TelemetryState telem;
-    {
-        std::lock_guard<std::mutex> lk(m_state.registryMutex);
-        telem = m_state.registry.get<TelemetryState>(m_state.ugv);
-    }
+    auto telem = snapshot<TelemetryState>(m_state);
 
     if (!telem.valid) {
         m_noDataLabel->show();

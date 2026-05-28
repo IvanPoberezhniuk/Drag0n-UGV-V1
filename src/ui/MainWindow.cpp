@@ -39,6 +39,8 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
 
     setCentralWidget(m_video);
 
+    m_panels = { m_connection, m_control, m_telemetry, m_logs, m_legend, m_video };
+
     auto makeDock = [this](const QString& title, QWidget* w, Qt::DockWidgetArea area) {
         auto* dock = new QDockWidget(title, this);
         dock->setWidget(w);
@@ -121,13 +123,7 @@ void MainWindow::openSettings() {
 
 void MainWindow::onTick() {
     m_inputManager.poll(m_state);
-
-    m_connection->refresh();
-    m_control->refresh();
-    m_telemetry->refresh();
-    m_logs->refresh();
-    m_legend->refresh();
-    m_video->refresh();
+    for (auto* p : m_panels) p->refresh();
 }
 
 void MainWindow::closeEvent(QCloseEvent* e) {

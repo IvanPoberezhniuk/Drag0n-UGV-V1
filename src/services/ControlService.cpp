@@ -1,7 +1,7 @@
 #include "services/ControlService.h"
 #include <algorithm>
 
-namespace DroneControlService {
+namespace ChannelMapper {
 
 static uint16_t mapAxis(float v) {
     float c = std::max(-1.0f, std::min(1.0f, v));
@@ -28,4 +28,4 @@ RcChannels mapChannels(const ControlState& ctrl, const AppConfig::ChannelsCfg& c
     return rc;
 }
 
-} // namespace DroneControlService
+} // namespace ChannelMapper

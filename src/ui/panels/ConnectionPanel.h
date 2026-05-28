@@ -1,5 +1,5 @@
 #pragma once
-#include <QWidget>
+#include "ui/IPanel.h"
 #include "core/AppState.h"
 #include "config/AppConfig.h"
 #include "io/SerialWorker.h"
@@ -9,11 +9,11 @@ class QLineEdit;
 class QPushButton;
 class QLabel;
 
-class ConnectionPanel : public QWidget {
+class ConnectionPanel : public IPanel {
 public:
     explicit ConnectionPanel(AppState& state, SerialWorker& worker,
                              const AppConfig& config, QWidget* parent = nullptr);
-    void refresh();
+    void refresh() override;
 
 private:
     void onConnectClicked();
