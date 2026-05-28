@@ -10,6 +10,6 @@ void VideoPanel::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.fillRect(rect(), Qt::black);
     p.setPen(QColor(80, 80, 80));
-    p.setFont(QFont(font().family(), 14));
+    p.setFont(font());
     p.drawText(rect(), Qt::AlignCenter, "No video feed");
 }

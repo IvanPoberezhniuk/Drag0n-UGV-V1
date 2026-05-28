@@ -58,7 +58,7 @@ LogsPanel::LogsPanel(AppState& state, QWidget* parent)
     m_textEdit = new QTextEdit(this);
     m_textEdit->setReadOnly(true);
     m_textEdit->setAcceptRichText(true);
-    QFont mono("Courier New", 9);
+    QFont mono("Courier New", font().pointSize());
     m_textEdit->setFont(mono);
     layout->addWidget(m_textEdit);
 

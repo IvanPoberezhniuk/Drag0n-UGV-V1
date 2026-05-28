@@ -16,10 +16,10 @@ private:
     void drawKeyboard(QPainter& p, int x, int& y);
     void drawController(QPainter& p, int x, int& y);
 
-    static void drawKey(QPainter& p, QRectF r, const QString& label);
-    static void drawCircularKey(QPainter& p, int x, int y, int size,
+    void drawKey(QPainter& p, QRectF r, const QString& label);
+    void drawCircularKey(QPainter& p, int x, int y, int size,
                                 const QString& label, QColor fill);
-    static void drawSectionTitle(QPainter& p, int x, int y, const QString& text);
+    void drawSectionTitle(QPainter& p, int x, int y, const QString& text);
 
     AppState&  m_state;
     InputType  m_lastInput = InputType::Keyboard;

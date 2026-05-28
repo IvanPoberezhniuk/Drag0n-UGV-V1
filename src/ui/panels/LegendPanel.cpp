@@ -36,7 +36,7 @@ void LegendPanel::drawKey(QPainter& p, QRectF r, const QString& label) {
     p.setPen(QPen(kKeyBorder, 1));
     p.drawRoundedRect(r, 5, 5);
 
-    QFont f("Segoe UI", 8, QFont::Bold);
+    QFont f = font(); f.setBold(true);
     p.setFont(f);
     p.setPen(kKeyText);
     p.drawText(r, Qt::AlignCenter, label);
@@ -60,14 +60,14 @@ void LegendPanel::drawCircularKey(QPainter& p, int x, int y, int size,
     p.setPen(QPen(fill.lighter(160), 1));
     p.drawEllipse(c, r, r);
 
-    QFont f("Segoe UI", 9, QFont::Bold);
+    QFont f = font(); f.setBold(true);
     p.setFont(f);
     p.setPen(Qt::white);
     p.drawText(QRectF(x, y, size, size), Qt::AlignCenter, label);
 }
 
 void LegendPanel::drawSectionTitle(QPainter& p, int x, int y, const QString& text) {
-    QFont f("Segoe UI", 9, QFont::Bold);
+    QFont f = font(); f.setBold(true);
     p.setFont(f);
     p.setPen(kGreen);
     p.drawText(x, y, text);
@@ -93,7 +93,7 @@ void LegendPanel::drawKeyboard(QPainter& p, int x, int& y) {
     drawKey(p, {(qreal)wX,             (qreal)(y+K+G), (qreal)K, (qreal)K}, "S");
     drawKey(p, {(qreal)(x+(K+G)*2),    (qreal)(y+K+G), (qreal)K, (qreal)K}, "D");
 
-    QFont af("Segoe UI", 8); p.setFont(af); p.setPen(kDimText);
+    QFont af = font(); p.setFont(af); p.setPen(kDimText);
     p.drawText(AX, y + K/2 + 4,          "Throttle fwd / rev");
     p.drawText(AX, y + (K+G) + K/2 + 4,  "Steer left / right");
     y += K * 2 + G + 14;
@@ -105,7 +105,7 @@ void LegendPanel::drawKeyboard(QPainter& p, int x, int& y) {
 
     drawKey(p, {(qreal)x, (qreal)y, 80, (qreal)K}, "Space");
     p.setPen(QColor(255, 80, 80));
-    QFont ef("Segoe UI", 8, QFont::Bold); p.setFont(ef);
+    QFont ef = font(); ef.setBold(true); p.setFont(ef);
     p.drawText(x + 84, y + K/2 + 4, "E-STOP");
     y += K + G + 4;
 
@@ -132,7 +132,7 @@ void LegendPanel::drawController(QPainter& p, int x, int& y) {
     const int G = 3;
     const int AX = x + K + 8;
 
-    QFont af("Segoe UI", 8);
+    QFont af = font();
 
     // LT / RT — rectangular keys
     drawKey(p, {(qreal)x, (qreal)y, 42, (qreal)K}, "LT");
@@ -160,7 +160,7 @@ void LegendPanel::drawController(QPainter& p, int x, int& y) {
     // B — estop (red)
     drawCircularKey(p, x, y, K, "B", QColor(190, 30, 30));
     p.setPen(QColor(255, 80, 80));
-    QFont ef("Segoe UI", 8, QFont::Bold); p.setFont(ef);
+    QFont ef = font(); ef.setBold(true); p.setFont(ef);
     p.drawText(AX, y + K/2 + 4, "E-STOP");
     y += K + G + 4;
 
