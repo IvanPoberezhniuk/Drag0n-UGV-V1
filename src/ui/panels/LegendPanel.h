@@ -1,10 +1,12 @@
 #pragma once
 #include <QWidget>
 #include <QColor>
+#include "core/AppState.h"
 
 class LegendPanel : public QWidget {
 public:
-    explicit LegendPanel(QWidget* parent = nullptr);
+    explicit LegendPanel(AppState& state, QWidget* parent = nullptr);
+    void refresh();
     QSize sizeHint() const override;
 
 protected:
@@ -18,4 +20,7 @@ private:
     static void drawCircularKey(QPainter& p, int x, int y, int size,
                                 const QString& label, QColor fill);
     static void drawSectionTitle(QPainter& p, int x, int y, const QString& text);
+
+    AppState&  m_state;
+    InputType  m_lastInput = InputType::Keyboard;
 };

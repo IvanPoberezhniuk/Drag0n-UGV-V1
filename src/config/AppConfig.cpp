@@ -48,6 +48,11 @@ AppConfig AppConfig::load(const std::string& path) {
             loadCh("estop",    cfg.channels.estop);
         }
 
+        if (j.contains("ui")) {
+            auto& u = j["ui"];
+            if (u.contains("fontSize")) cfg.ui.fontSize = u["fontSize"].get<int>();
+        }
+
         spdlog::info("AppConfig: loaded '{}' — serial={} @{} baud, {}Hz",
             path, cfg.serial.port, cfg.serial.baudrate, cfg.control.rateHz);
     } catch (const std::exception& e) {

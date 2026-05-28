@@ -7,6 +7,8 @@
 #include <QApplication>
 #include <QPalette>
 #include <QMessageBox>
+#include <QSettings>
+#include <QFont>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include "core/AppState.h"
@@ -96,6 +98,12 @@ int main(int argc, char** argv) {
         ? AppConfig::defaults()
         : AppConfig::load(configPath);
 
+    {
+        QSettings s("UGVControlStation", "UGVControlStation");
+        QString family = s.value("ui/fontFamily", "Segoe UI").toString();
+        int     size   = s.value("ui/fontSize",   config.ui.fontSize).toInt();
+        app.setFont(QFont(family, size));
+    }
     AppState state;
     state.ugv = state.registry.create();
     state.registry.emplace<ControlState>(state.ugv);

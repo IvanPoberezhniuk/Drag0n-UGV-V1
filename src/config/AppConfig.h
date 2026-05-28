@@ -22,6 +22,10 @@ struct AppConfig {
         int estop    = 6;
     } channels;
 
+    struct UiCfg {
+        int fontSize = 12;
+    } ui;
+
     static AppConfig load(const std::string& path);
     static AppConfig defaults();
 };

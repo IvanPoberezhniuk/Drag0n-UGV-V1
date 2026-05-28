@@ -125,6 +125,9 @@ Place `config.json` next to the exe or pass `--config <path>`. All fields are op
     "lights":   4,
     "arm":      5,
     "estop":    6
+  },
+  "ui": {
+    "fontSize": 10
   }
 }
 ```

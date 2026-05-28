@@ -9,6 +9,8 @@
 #include "core/Events.h"
 #include "core/LogBuffer.h"
 
+enum class InputType { Keyboard, Gamepad };
+
 // Central application state.
 // ECS registry stores UGV components on a single entity.
 // Dispatcher (main-thread only) routes typed events to registered handlers.
@@ -22,5 +24,6 @@ struct AppState {
 
     std::atomic<bool> quit{false};
 
+    InputType activeInput = InputType::Keyboard;
     LogBuffer logs;
 };

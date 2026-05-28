@@ -11,6 +11,8 @@ class ControlPanel;
 class TelemetryPanel;
 class LogsPanel;
 class LegendPanel;
+class VideoPanel;
+class QDockWidget;
 
 class MainWindow : public QMainWindow {
 public:
@@ -20,9 +22,14 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* e) override;
+    void showEvent(QShowEvent* e) override;
+
+private slots:
+    void openSettings();
 
 private:
     void onTick();
+    void applyDefaultLayout();
 
     AppState&        m_state;
     const AppConfig& m_config;
@@ -34,6 +41,15 @@ private:
     TelemetryPanel*  m_telemetry  = nullptr;
     LogsPanel*       m_logs       = nullptr;
     LegendPanel*     m_legend     = nullptr;
+    VideoPanel*      m_video      = nullptr;
+
+    QDockWidget* m_connDock      = nullptr;
+    QDockWidget* m_controlDock   = nullptr;
+    QDockWidget* m_telemetryDock = nullptr;
+    QDockWidget* m_logsDock      = nullptr;
+    QDockWidget* m_legendDock    = nullptr;
 
     QTimer m_timer;
+    bool   m_layoutDone        = false;
+    bool   m_hasRestoredLayout = false;
 };

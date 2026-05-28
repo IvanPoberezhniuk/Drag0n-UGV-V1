@@ -4,6 +4,7 @@
 #include <spdlog/spdlog.h>
 #include <mutex>
 #include <algorithm>
+#include <string_view>
 
 void InputManager::addSource(std::unique_ptr<IInputSource> src) {
     m_sources.push_back({ std::move(src), {} });
@@ -22,6 +23,23 @@ void InputManager::poll(AppState& state) {
         if (f.hasAxes)
             entry.lastAxisTime = now;
         frames.push_back(f);
+    }
+
+    // Track most-recently-active source (axes + buttons)
+    for (size_t i = 0; i < m_sources.size(); ++i) {
+        const auto& f = frames[i];
+        if (f.hasAxes || f.arm || f.disarm || f.estop || f.toggleLights || f.setDriveMode > 0)
+            m_sources[i].lastActivityTime = now;
+    }
+
+    auto activeIt = std::max_element(m_sources.begin(), m_sources.end(),
+        [](const Entry& a, const Entry& b) {
+            return a.lastActivityTime < b.lastActivityTime;
+        });
+    if (activeIt != m_sources.end() &&
+        activeIt->lastActivityTime != std::chrono::steady_clock::time_point{}) {
+        state.activeInput = (std::string_view(activeIt->source->name()) == "Keyboard")
+                            ? InputType::Keyboard : InputType::Gamepad;
     }
 
     // Pick axes from source with most recent lastAxisTime

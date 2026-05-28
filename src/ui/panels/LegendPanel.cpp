@@ -8,11 +8,19 @@ static const QColor kKeyText  {230, 230, 230};
 static const QColor kDimText  {160, 160, 160};
 static const QColor kGreen    {0,   200, 80};
 
-LegendPanel::LegendPanel(QWidget* parent) : QWidget(parent) {
+LegendPanel::LegendPanel(AppState& state, QWidget* parent)
+    : QWidget(parent), m_state(state) {
     setMinimumWidth(300);
 }
 
 QSize LegendPanel::sizeHint() const { return {320, 580}; }
+
+void LegendPanel::refresh() {
+    if (m_state.activeInput != m_lastInput) {
+        m_lastInput = m_state.activeInput;
+        update();
+    }
+}
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
@@ -73,7 +81,7 @@ void LegendPanel::drawKeyboard(QPainter& p, int x, int& y) {
     drawSectionTitle(p, x, y, "Keyboard");
     y += 18;
 
-    const int K  = 30;
+    const int K  = fontMetrics().height() + 12;  // key size scales with font
     const int G  = 3;
     const int AX = x + K * 3 + G * 2 + 14;
 
@@ -120,7 +128,7 @@ void LegendPanel::drawController(QPainter& p, int x, int& y) {
     drawSectionTitle(p, x, y, "Xbox Controller");
     y += 18;
 
-    const int K = 30;
+    const int K = fontMetrics().height() + 12;
     const int G = 3;
     const int AX = x + K + 8;
 
@@ -179,6 +187,8 @@ void LegendPanel::paintEvent(QPaintEvent*) {
     p.fillRect(rect(), QColor(38, 38, 38));
 
     int x = 14, y = 20;
-    drawKeyboard(p, x, y);
-    drawController(p, x, y);
+    if (m_state.activeInput == InputType::Gamepad)
+        drawController(p, x, y);
+    else
+        drawKeyboard(p, x, y);
 }

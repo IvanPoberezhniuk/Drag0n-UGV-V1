@@ -14,6 +14,7 @@ private:
     struct Entry {
         std::unique_ptr<IInputSource> source;
         std::chrono::steady_clock::time_point lastAxisTime{};
+        std::chrono::steady_clock::time_point lastActivityTime{};
     };
     std::vector<Entry> m_sources;
 };
