@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../work/chitowntrainer-frontend"
+		},
+		{
+			"path": "../../work/chitowntrainer-sails"
+		}
+	],
+	"settings": {
+		"chatgpt.openOnStartup": false
+	}
+}

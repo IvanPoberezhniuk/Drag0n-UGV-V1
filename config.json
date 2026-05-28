@@ -1,0 +1,18 @@
+{
+    "serial": {
+        "port": "auto",
+        "baudrate": 420000
+    },
+    "control": {
+        "rateHz": 50,
+        "failsafeTimeoutMs": 300
+    },
+    "channels": {
+        "steering": 1,
+        "throttle": 2,
+        "mode":     3,
+        "lights":   4,
+        "arm":      5,
+        "estop":    6
+    }
+}

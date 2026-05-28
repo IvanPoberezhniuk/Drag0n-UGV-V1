@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "xmake: configure",
+      "type": "shell",
+      "command": "xmake",
+      "args": [
+        "f", "-c",
+        "-p", "mingw",
+        "--mingw=C:\\msys64\\ucrt64",
+        "--qt=C:\\msys64\\ucrt64"
+      ],
+      "options": {
+        "env": {
+          "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      },
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "xmake: build",
+      "type": "shell",
+      "command": "xmake",
+      "args": ["-v"],
+      "options": {
+        "env": {
+          "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
+        }
+      },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "shared" }
+    },
+    {
+      "label": "xmake: configure & build",
+      "dependsOrder": "sequence",
+      "dependsOn": ["xmake: configure", "xmake: build"],
+      "group": "build"
+    }
+  ]
+}
