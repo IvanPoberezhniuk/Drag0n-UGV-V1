@@ -1,5 +1,5 @@
 #pragma once
-#include <QAbstractButton>
+#include "ui/widgets/ToggleSwitch.h"
 #include "ui/IPanel.h"
 #include "core/AppState.h"
 
@@ -7,16 +7,6 @@ class QProgressBar;
 class QPushButton;
 class QLabel;
 class QRadioButton;
-
-class ToggleSwitch : public QAbstractButton {
-public:
-    explicit ToggleSwitch(const QString& label, QWidget* parent = nullptr);
-    QSize sizeHint() const override;
-protected:
-    void paintEvent(QPaintEvent*) override;
-private:
-    QString m_label;
-};
 
 class ControlPanel : public IPanel {
 public:

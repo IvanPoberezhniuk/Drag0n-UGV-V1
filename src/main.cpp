@@ -5,7 +5,6 @@
 
 #include <QIcon>
 #include <QApplication>
-#include <QPalette>
 #include <QMessageBox>
 #include <QSettings>
 #include <QFont>
@@ -23,6 +22,8 @@
 #include "input/KeyboardInput.h"
 #include "input/XInputGamepad.h"
 #include "ui/MainWindow.h"
+#include "ui/Theme.h"
+#include "ui/SettingsKeys.h"
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -67,21 +68,7 @@ int main(int argc, char** argv) {
     }
 
     app.setStyle("Fusion");
-    QPalette dark;
-    dark.setColor(QPalette::Window,          QColor(45,  45,  45));
-    dark.setColor(QPalette::WindowText,      Qt::white);
-    dark.setColor(QPalette::Base,            QColor(30,  30,  30));
-    dark.setColor(QPalette::AlternateBase,   QColor(53,  53,  53));
-    dark.setColor(QPalette::ToolTipBase,     Qt::white);
-    dark.setColor(QPalette::ToolTipText,     Qt::white);
-    dark.setColor(QPalette::Text,            Qt::white);
-    dark.setColor(QPalette::Button,          QColor(53,  53,  53));
-    dark.setColor(QPalette::ButtonText,      Qt::white);
-    dark.setColor(QPalette::BrightText,      Qt::red);
-    dark.setColor(QPalette::Highlight,       QColor(42, 130, 218));
-    dark.setColor(QPalette::HighlightedText, Qt::black);
-    dark.setColor(QPalette::Link,            QColor(42, 130, 218));
-    app.setPalette(dark);
+    app.setPalette(Theme::darkPalette());
 
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     consoleSink->set_pattern("[%T.%e] [%^%l%$] %v");
@@ -99,19 +86,18 @@ int main(int argc, char** argv) {
         : AppConfig::load(configPath);
 
     {
-        QSettings s("UGVControlStation", "UGVControlStation");
-        QString family = s.value("ui/fontFamily", "Segoe UI").toString();
-        int     size   = s.value("ui/fontSize",   config.ui.fontSize).toInt();
+        QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
+        QString family = s.value(SettingsKeys::kFontFamily, "Segoe UI").toString();
+        int     size   = s.value(SettingsKeys::kFontSize,   config.ui.fontSize).toInt();
         app.setFont(QFont(family, size));
-        // wheelSizePercent is applied to AppState after state is created below
     }
     AppState state;
     {
-        QSettings s("UGVControlStation", "UGVControlStation");
-        state.wheelSizePercent.store(s.value("ui/wheelSize", 100).toInt());
+        QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
+        state.wheelSizePercent.store(s.value(SettingsKeys::kWheelSize, 100).toInt());
         for (int i = 0; i < KeyBindings::Count; ++i) {
-            auto k1 = QString("keybindings/%1/key1").arg(i);
-            auto k2 = QString("keybindings/%1/key2").arg(i);
+            auto k1 = QString(SettingsKeys::kBindKey1Fmt).arg(i);
+            auto k2 = QString(SettingsKeys::kBindKey2Fmt).arg(i);
             if (s.contains(k1)) state.keyBindings.actions[i].key1 = s.value(k1).toInt();
             if (s.contains(k2)) state.keyBindings.actions[i].key2 = s.value(k2).toInt();
         }

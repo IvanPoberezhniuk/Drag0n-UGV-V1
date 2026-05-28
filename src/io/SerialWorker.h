@@ -2,12 +2,12 @@
 #include "core/AppState.h"
 #include "config/AppConfig.h"
 #include "io/SerialPort.h"
+#include "io/CrsfFrameParser.h"
 #include <thread>
 #include <atomic>
 #include <queue>
 #include <mutex>
 #include <string>
-#include <vector>
 #include <chrono>
 #include <cstdint>
 
@@ -34,20 +34,17 @@ private:
     void doConnect(const std::string& port, uint32_t baud);
     void doDisconnect();
     void readAndParse();
-    void processRxBytes(const uint8_t* data, int len);
-    void parseTelemetryFrame(uint8_t type, const uint8_t* payload, size_t len);
 
     AppState&        m_state;
     const AppConfig& m_config;
     SerialPort       m_serial;
+    CrsfFrameParser  m_parser;
 
     std::queue<Command> m_commands;
     std::mutex          m_commandMutex;
 
     std::thread       m_thread;
     std::atomic<bool> m_running{false};
-
-    std::vector<uint8_t> m_rxBuf;
 
     std::string m_reconnectPort;
     uint32_t    m_reconnectBaud = 0;

@@ -23,6 +23,7 @@ target("UGVControlStation")
         "src/ui/SettingsDialog.h",
         "src/ui/CompassBar.cpp",
         "src/ui/CompassBar.h",
+        "src/ui/widgets/ToggleSwitch.cpp",
         "src/ui/panels/ConnectionPanel.cpp",
         "src/ui/panels/ControlPanel.cpp",
         "src/ui/panels/TelemetryPanel.cpp",

@@ -10,24 +10,16 @@
 #include <QPushButton>
 #include <QLabel>
 
-static QString statusText(ConnectionStatus s) {
-    switch (s) {
-        case ConnectionStatus::Disconnected: return "Disconnected";
-        case ConnectionStatus::Connecting:   return "Connecting...";
-        case ConnectionStatus::Connected:    return "Connected";
-        case ConnectionStatus::Error:        return "Error";
-    }
-    return "Unknown";
-}
+struct StatusInfo { const char* text; const QColor& color; };
 
-static QString statusStyle(ConnectionStatus s) {
+static StatusInfo statusInfo(ConnectionStatus s) {
     switch (s) {
-        case ConnectionStatus::Disconnected: return Theme::colorSS(Theme::textMuted);
-        case ConnectionStatus::Connecting:   return Theme::colorSS(Theme::warningYellow);
-        case ConnectionStatus::Connected:    return Theme::colorSS(Theme::successGreen);
-        case ConnectionStatus::Error:        return Theme::colorSS(Theme::errorRed);
+        case ConnectionStatus::Disconnected: return { "Disconnected", Theme::textMuted     };
+        case ConnectionStatus::Connecting:   return { "Connecting...", Theme::warningYellow };
+        case ConnectionStatus::Connected:    return { "Connected",    Theme::successGreen  };
+        case ConnectionStatus::Error:        return { "Error",        Theme::errorRed      };
     }
-    return "";
+    return { "Unknown", Theme::textMuted };
 }
 
 ConnectionPanel::ConnectionPanel(AppState& state, SerialWorker& worker,
@@ -103,11 +95,12 @@ void ConnectionPanel::onConnectClicked() {
 void ConnectionPanel::refresh() {
     auto conn = snapshot<ConnectionState>(m_state);
 
-    QString label = "● " + statusText(conn.status);
+    auto [text, color] = statusInfo(conn.status);
+    QString label = QString("● ") + text;
     if (!conn.errorMessage.empty())
         label += "   " + QString::fromStdString(conn.errorMessage);
     m_statusLabel->setText(label);
-    m_statusLabel->setStyleSheet(statusStyle(conn.status));
+    m_statusLabel->setStyleSheet(Theme::colorSS(color));
 
     bool active = conn.status == ConnectionStatus::Connected ||
                   conn.status == ConnectionStatus::Connecting;

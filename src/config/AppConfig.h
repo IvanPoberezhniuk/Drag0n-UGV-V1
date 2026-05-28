@@ -4,13 +4,16 @@
 
 struct AppConfig {
     struct SerialCfg {
-        std::string port    = "auto";
-        uint32_t    baudrate = 420000;
+        std::string port             = "auto";
+        uint32_t    baudrate         = 420000;
+        uint32_t    reconnectDelayMs = 2000;
     } serial;
 
     struct ControlCfg {
-        uint32_t rateHz           = 50;
-        uint32_t failsafeTimeoutMs = 300;
+        uint32_t rateHz              = 50;
+        uint32_t failsafeTimeoutMs   = 300;
+        uint32_t telemetryTimeoutMs  = 5000;
+        uint32_t writeErrorThreshold = 5;
     } control;
 
     struct ChannelsCfg {
@@ -23,7 +26,8 @@ struct AppConfig {
     } channels;
 
     struct UiCfg {
-        int fontSize = 12;
+        int      fontSize          = 12;
+        uint32_t refreshIntervalMs = 30;
     } ui;
 
     struct InputCfg {

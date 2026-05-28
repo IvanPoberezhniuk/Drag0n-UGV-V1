@@ -1,6 +1,7 @@
 #include "ui/panels/WheelPanel.h"
 #include "core/ControlState.h"
 #include "core/SafetyState.h"
+#include "core/StateSnapshot.h"
 #include <QPainter>
 #include <cmath>
 
@@ -47,27 +48,13 @@ void WheelPanel::paintEvent(QPaintEvent*) {
     p.setBrush(QColor(0, 0, 0, 140));
     p.drawRoundedRect(QRectF(0, 0, kBaseW, kBaseH), 6, 6);
 
-    bool  armed     = false;
-    bool  braked    = false;
-    bool  lightsOn  = false;
-    float throttle  = 0.0f;
-    float steering  = 0.0f;
-    int   driveMode = 1;
-    {
-        std::lock_guard<std::mutex> lk(m_state.registryMutex);
-        if (m_state.ugv != entt::null &&
-            m_state.registry.all_of<ControlState>(m_state.ugv))
-        {
-            auto& ctrl   = m_state.registry.get<ControlState>(m_state.ugv);
-            auto& safety = m_state.registry.get<SafetyState>(m_state.ugv);
-            armed     = ctrl.armed;
-            braked    = ctrl.estop || safety.estopLatched;
-            lightsOn  = ctrl.lightsOn;
-            throttle  = ctrl.throttle;
-            steering  = ctrl.steering;
-            driveMode = ctrl.driveMode;
-        }
-    }
+    auto [ctrl, safety] = snapshot<ControlState, SafetyState>(m_state);
+    bool  armed     = ctrl.armed;
+    bool  braked    = ctrl.estop || safety.estopLatched;
+    bool  lightsOn  = ctrl.lightsOn;
+    float throttle  = ctrl.throttle;
+    float steering  = ctrl.steering;
+    int   driveMode = ctrl.driveMode;
 
     float leftPow  = throttle - steering * 0.5f;
     float rightPow = throttle + steering * 0.5f;

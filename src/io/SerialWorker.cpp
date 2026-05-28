@@ -59,7 +59,7 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
             auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
             conn.status       = ConnectionStatus::Error;
             conn.errorMessage = "Auto-detect: no ELRS TX module found";
-            m_nextReconnect   = Clock::now() + std::chrono::seconds(2);
+            m_nextReconnect   = Clock::now() + Ms(m_config.serial.reconnectDelayMs);
             return;
         }
     }
@@ -69,22 +69,22 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
         auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
         conn.status   = ConnectionStatus::Connected;
         conn.portName = resolvedPort;
-        m_reconnectPort = port;   // keep original (may be "auto") for re-enumeration
+        m_reconnectPort = port;
         m_reconnectBaud = baud;
         m_writeErrors   = 0;
-        m_rxBuf.clear();
+        m_parser.clear();
     } else {
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
         auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
         conn.status       = ConnectionStatus::Error;
         conn.errorMessage = "Failed to open " + resolvedPort;
-        m_nextReconnect   = Clock::now() + std::chrono::seconds(2);
+        m_nextReconnect   = Clock::now() + Ms(m_config.serial.reconnectDelayMs);
     }
 }
 
 void SerialWorker::doDisconnect() {
     m_serial.close();
-    m_reconnectPort.clear(); // user-initiated disconnect: don't auto-reconnect
+    m_reconnectPort.clear();
     std::lock_guard<std::mutex> lk(m_state.registryMutex);
     auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
     conn.status = ConnectionStatus::Disconnected;
@@ -110,63 +110,26 @@ void SerialWorker::drainCommands() {
 void SerialWorker::readAndParse() {
     uint8_t tmp[256];
     int n = m_serial.read(tmp, sizeof(tmp));
-    if (n > 0)
-        processRxBytes(tmp, n);
-}
+    if (n <= 0) return;
 
-void SerialWorker::processRxBytes(const uint8_t* data, int len) {
-    m_rxBuf.insert(m_rxBuf.end(), data, data + len);
-
-    while (m_rxBuf.size() >= 4) {
-        if (m_rxBuf[0] != CRSF_SYNC) {
-            m_rxBuf.erase(m_rxBuf.begin());
-            continue;
+    m_parser.feed(tmp, n,
+        [this](const CrsfFrameParser::LinkStats& ls) {
+            std::lock_guard<std::mutex> lk(m_state.registryMutex);
+            auto& t    = m_state.registry.get<TelemetryState>(m_state.ugv);
+            t.rssi1    = ls.rssi1;
+            t.rssi2    = ls.rssi2;
+            t.lq       = ls.lq;
+            t.valid    = true;
+            t.lastReceived = Clock::now();
+        },
+        [this](const CrsfFrameParser::BatterySensor& bat) {
+            std::lock_guard<std::mutex> lk(m_state.registryMutex);
+            auto& t          = m_state.registry.get<TelemetryState>(m_state.ugv);
+            t.batteryVoltage = bat.voltage;
+            t.valid          = true;
+            t.lastReceived   = Clock::now();
         }
-
-        uint8_t frameLen = m_rxBuf[1]; // type + payload + crc
-        if (frameLen < 2) {
-            m_rxBuf.erase(m_rxBuf.begin());
-            continue;
-        }
-
-        size_t total = 2u + frameLen;
-        if (m_rxBuf.size() < total)
-            break;
-
-        uint8_t expected = crc8_dvbs2(m_rxBuf.data() + 2, frameLen - 1);
-        if (expected != m_rxBuf[total - 1]) {
-            m_rxBuf.erase(m_rxBuf.begin());
-            continue;
-        }
-
-        uint8_t       type       = m_rxBuf[2];
-        const uint8_t* payload   = m_rxBuf.data() + 3;
-        size_t         payloadLen = frameLen - 2;
-        parseTelemetryFrame(type, payload, payloadLen);
-        m_rxBuf.erase(m_rxBuf.begin(), m_rxBuf.begin() + total);
-    }
-
-    if (m_rxBuf.size() > 512)
-        m_rxBuf.clear();
-}
-
-void SerialWorker::parseTelemetryFrame(uint8_t type, const uint8_t* payload, size_t len) {
-    if (type == CRSF_FRAMETYPE_LINK_STATISTICS && len >= 10) {
-        std::lock_guard<std::mutex> lk(m_state.registryMutex);
-        auto& t        = m_state.registry.get<TelemetryState>(m_state.ugv);
-        t.rssi1        = payload[0];
-        t.rssi2        = payload[1];
-        t.lq           = payload[2];
-        t.valid        = true;
-        t.lastReceived = Clock::now();
-    } else if (type == CRSF_FRAMETYPE_BATTERY_SENSOR && len >= 8) {
-        float voltage = static_cast<float>((payload[0] << 8) | payload[1]) * 0.1f;
-        std::lock_guard<std::mutex> lk(m_state.registryMutex);
-        auto& t          = m_state.registry.get<TelemetryState>(m_state.ugv);
-        t.batteryVoltage = voltage;
-        t.valid          = true;
-        t.lastReceived   = Clock::now();
-    }
+    );
 }
 
 void SerialWorker::loop() {
@@ -183,7 +146,6 @@ void SerialWorker::loop() {
 
         drainCommands();
 
-        // Snapshot control + safety state
         ControlState ctrl;
         SafetyState  safety;
         {
@@ -192,10 +154,8 @@ void SerialWorker::loop() {
             safety = m_state.registry.get<SafetyState>(m_state.ugv);
         }
 
-        // Apply safety rules
         SafetyService::apply(ctrl, safety, m_config.control.failsafeTimeoutMs);
 
-        // Write safety state back
         {
             std::lock_guard<std::mutex> lk(m_state.registryMutex);
             m_state.registry.get<SafetyState>(m_state.ugv) = safety;
@@ -204,14 +164,13 @@ void SerialWorker::loop() {
         if (m_serial.isOpen()) {
             readAndParse();
 
-            // Invalidate telemetry if no frame received in 5 seconds
             {
                 std::lock_guard<std::mutex> lk(m_state.registryMutex);
                 auto& t = m_state.registry.get<TelemetryState>(m_state.ugv);
                 if (t.valid) {
                     auto msSince = std::chrono::duration_cast<Ms>(
                         Clock::now() - t.lastReceived).count();
-                    if (msSince > 5000) {
+                    if (msSince > static_cast<long long>(m_config.control.telemetryTimeoutMs)) {
                         t.valid = false;
                         spdlog::warn("SerialWorker: telemetry timeout ({}ms)", msSince);
                     }
@@ -223,24 +182,23 @@ void SerialWorker::loop() {
             if (m_serial.write(pkt.data(), pkt.size())) {
                 ++frameCount;
                 m_writeErrors = 0;
-            } else if (++m_writeErrors >= 5) {
+            } else if (++m_writeErrors >= static_cast<int>(m_config.control.writeErrorThreshold)) {
                 spdlog::warn("SerialWorker: {} write errors — closing for reconnect", m_writeErrors);
                 m_serial.close();
                 m_writeErrors   = 0;
-                m_nextReconnect = Clock::now() + std::chrono::seconds(2);
+                m_nextReconnect = Clock::now() + Ms(m_config.serial.reconnectDelayMs);
                 std::lock_guard<std::mutex> lk(m_state.registryMutex);
                 auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
                 conn.status       = ConnectionStatus::Error;
-                conn.errorMessage = "Connection lost — retrying in 2s";
+                conn.errorMessage = "Connection lost — retrying";
                 conn.pktPerSec    = 0;
             }
         } else if (!m_reconnectPort.empty() && Clock::now() >= m_nextReconnect) {
-            m_nextReconnect = Clock::now() + std::chrono::seconds(2);
+            m_nextReconnect = Clock::now() + Ms(m_config.serial.reconnectDelayMs);
             spdlog::info("SerialWorker: auto-reconnecting to {}", m_reconnectPort);
             doConnect(m_reconnectPort, m_reconnectBaud);
         }
 
-        // Update pkt/s stats once per second
         auto elapsed = std::chrono::duration_cast<Ms>(Clock::now() - statsTimer).count();
         if (elapsed >= 1000) {
             std::lock_guard<std::mutex> lk(m_state.registryMutex);
@@ -255,7 +213,6 @@ void SerialWorker::loop() {
             std::this_thread::sleep_for(intervalUs - frameDuration);
     }
 
-    // Send one failsafe packet then close
     if (m_serial.isOpen()) {
         RcChannels safe{};
         for (auto& c : safe.ch) c = CH_CENTER;

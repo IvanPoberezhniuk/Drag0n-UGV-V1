@@ -6,6 +6,7 @@
 #include "ui/panels/LegendPanel.h"
 #include "ui/panels/VideoPanel.h"
 #include "ui/SettingsDialog.h"
+#include "ui/SettingsKeys.h"
 #include <QDockWidget>
 #include <QCloseEvent>
 #include <QEvent>
@@ -84,12 +85,12 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     viewMenu->addAction(m_logsDock->toggleViewAction());
 
     connect(&m_timer, &QTimer::timeout, this, [this]() { onTick(); });
-    m_timer.start(30);
+    m_timer.start(static_cast<int>(m_config.ui.refreshIntervalMs));
 
-    QSettings s("UGVControlStation", "UGVControlStation");
-    if (s.contains("geometry"))    restoreGeometry(s.value("geometry").toByteArray());
-    if (s.contains("windowState")) {
-        restoreState(s.value("windowState").toByteArray());
+    QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
+    if (s.contains(SettingsKeys::kGeometry))    restoreGeometry(s.value(SettingsKeys::kGeometry).toByteArray());
+    if (s.contains(SettingsKeys::kWindowState)) {
+        restoreState(s.value(SettingsKeys::kWindowState).toByteArray());
         m_hasRestoredLayout = true;
     }
 }
@@ -127,9 +128,9 @@ void MainWindow::onTick() {
 }
 
 void MainWindow::closeEvent(QCloseEvent* e) {
-    QSettings s("UGVControlStation", "UGVControlStation");
-    s.setValue("geometry",    saveGeometry());
-    s.setValue("windowState", saveState());
+    QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
+    s.setValue(SettingsKeys::kGeometry,    saveGeometry());
+    s.setValue(SettingsKeys::kWindowState, saveState());
 
     m_timer.stop();
     m_worker.stop();

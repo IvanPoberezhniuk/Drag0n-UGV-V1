@@ -1,4 +1,5 @@
 #include "ui/SettingsDialog.h"
+#include "ui/SettingsKeys.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QListWidget>
@@ -306,13 +307,13 @@ void SettingsDialog::onApply() {
     // Key bindings — write to app state and persist
     m_appState.keyBindings = m_editedBindings;
 
-    QSettings s("UGVControlStation", "UGVControlStation");
-    s.setValue("ui/fontFamily", f.family());
-    s.setValue("ui/fontSize",   f.pointSize());
-    s.setValue("ui/wheelSize",  wheelPct);
+    QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
+    s.setValue(SettingsKeys::kFontFamily, f.family());
+    s.setValue(SettingsKeys::kFontSize,   f.pointSize());
+    s.setValue(SettingsKeys::kWheelSize,  wheelPct);
     for (int i = 0; i < KeyBindings::Count; ++i) {
-        s.setValue(QString("keybindings/%1/key1").arg(i), m_editedBindings.actions[i].key1);
-        s.setValue(QString("keybindings/%1/key2").arg(i), m_editedBindings.actions[i].key2);
+        s.setValue(QString(SettingsKeys::kBindKey1Fmt).arg(i), m_editedBindings.actions[i].key1);
+        s.setValue(QString(SettingsKeys::kBindKey2Fmt).arg(i), m_editedBindings.actions[i].key2);
     }
 }
 
