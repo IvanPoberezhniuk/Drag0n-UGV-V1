@@ -1,5 +1,6 @@
 #pragma once
 #include "input/IInputSource.h"
+#include <chrono>
 
 class KeyboardInput : public IInputSource {
 public:
@@ -15,4 +16,8 @@ private:
     bool m_prev2     = false;
     bool m_prev3     = false;
     bool m_armed     = false;
+
+    float m_throttle = 0.0f;
+    float m_steering = 0.0f;
+    std::chrono::steady_clock::time_point m_lastPoll{};
 };
