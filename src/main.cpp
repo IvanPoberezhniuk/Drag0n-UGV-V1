@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     }
 
     MainWindow window(state, config, worker, inputManager);
-    window.show();
+    window.showMaximized();
 
     worker.start();
     spdlog::info("UGV Control Station started — {}Hz worker, Qt6 UI", config.control.rateHz);
