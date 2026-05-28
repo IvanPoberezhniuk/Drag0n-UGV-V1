@@ -73,6 +73,14 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     prefsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma));
     connect(prefsAction, &QAction::triggered, this, &MainWindow::openSettings);
 
+    auto* viewMenu = menuBar()->addMenu("&View");
+    viewMenu->addAction(m_connDock->toggleViewAction());
+    viewMenu->addAction(m_controlDock->toggleViewAction());
+    viewMenu->addAction(m_legendDock->toggleViewAction());
+    viewMenu->addSeparator();
+    viewMenu->addAction(m_telemetryDock->toggleViewAction());
+    viewMenu->addAction(m_logsDock->toggleViewAction());
+
     connect(&m_timer, &QTimer::timeout, this, [this]() { onTick(); });
     m_timer.start(30);
 

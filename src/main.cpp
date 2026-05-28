@@ -109,6 +109,12 @@ int main(int argc, char** argv) {
     {
         QSettings s("UGVControlStation", "UGVControlStation");
         state.wheelSizePercent.store(s.value("ui/wheelSize", 100).toInt());
+        for (int i = 0; i < KeyBindings::Count; ++i) {
+            auto k1 = QString("keybindings/%1/key1").arg(i);
+            auto k2 = QString("keybindings/%1/key2").arg(i);
+            if (s.contains(k1)) state.keyBindings.actions[i].key1 = s.value(k1).toInt();
+            if (s.contains(k2)) state.keyBindings.actions[i].key2 = s.value(k2).toInt();
+        }
     }
     state.ugv = state.registry.create();
     state.registry.emplace<ControlState>(state.ugv);
@@ -124,7 +130,7 @@ int main(int argc, char** argv) {
 
     SerialWorker  worker(state, config);
     InputManager  inputManager;
-    inputManager.addSource(std::make_unique<KeyboardInput>());
+    inputManager.addSource(std::make_unique<KeyboardInput>(state.keyBindings));
     inputManager.addSource(std::make_unique<XInputGamepad>(0));
 
     if (!config.serial.port.empty()) {

@@ -8,13 +8,10 @@
 #include "core/ConnectionState.h"
 #include "core/Events.h"
 #include "core/LogBuffer.h"
+#include "input/KeyBindings.h"
 
 enum class InputType { Keyboard, Gamepad };
 
-// Central application state.
-// ECS registry stores UGV components on a single entity.
-// Dispatcher (main-thread only) routes typed events to registered handlers.
-// registryMutex guards registry access across the main thread and serial worker.
 struct AppState {
     entt::registry   registry;
     entt::dispatcher dispatcher;
@@ -27,4 +24,6 @@ struct AppState {
     InputType          activeInput      = InputType::Keyboard;
     std::atomic<int>   wheelSizePercent {100};
     LogBuffer logs;
+
+    KeyBindings keyBindings;
 };
