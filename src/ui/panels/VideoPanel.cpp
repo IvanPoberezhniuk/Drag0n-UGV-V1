@@ -21,6 +21,7 @@ VideoPanel::VideoPanel(AppState& state, QWidget* parent)
 
     m_compass = new CompassBar(this);
     m_compass->show();
+    repositionCompass();
 }
 
 void VideoPanel::generateNoise() {
@@ -49,7 +50,6 @@ void VideoPanel::refresh() {
         auto& telem = m_state.registry.get<TelemetryState>(m_state.ugv);
         m_compass->setHeading(telem.heading, telem.valid);
     }
-    repositionCompass();
 
     update();
 }
