@@ -10,6 +10,7 @@ class ConnectionPanel;
 class ControlPanel;
 class TelemetryPanel;
 class LogsPanel;
+class LegendPanel;
 
 class MainWindow : public QMainWindow {
 public:
@@ -32,6 +33,7 @@ private:
     ControlPanel*    m_control    = nullptr;
     TelemetryPanel*  m_telemetry  = nullptr;
     LogsPanel*       m_logs       = nullptr;
+    LegendPanel*     m_legend     = nullptr;
 
     QTimer m_timer;
 };

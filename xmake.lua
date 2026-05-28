@@ -23,6 +23,7 @@ target("UGVControlStation")
         "src/ui/panels/ControlPanel.cpp",
         "src/ui/panels/TelemetryPanel.cpp",
         "src/ui/panels/LogsPanel.cpp",
+        "src/ui/panels/LegendPanel.cpp",
         "src/services/SafetyService.cpp",
         "src/services/ControlService.cpp",
         "src/io/SerialPort.cpp",

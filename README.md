@@ -178,5 +178,6 @@ src/
         ├── ConnectionPanel   — port selector, connect/disconnect, status
         ├── ControlPanel      — throttle/steering bars, arm, estop, drive mode
         ├── TelemetryPanel    — RSSI, LQ, battery (live when RX sends frames)
-        └── LogsPanel         — filterable real-time log viewer
+        ├── LogsPanel         — filterable real-time log viewer
+        └── LegendPanel       — keyboard & Xbox controller visual reference
 ```
