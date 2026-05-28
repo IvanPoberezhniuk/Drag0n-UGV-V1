@@ -11,13 +11,13 @@
 #include <QSettings>
 
 MainWindow::MainWindow(AppState& state, const AppConfig& config,
-                       SerialWorker& worker, KeyboardInput& keyboard,
+                       SerialWorker& worker, InputManager& inputManager,
                        QWidget* parent)
     : QMainWindow(parent)
     , m_state(state)
     , m_config(config)
     , m_worker(worker)
-    , m_keyboard(keyboard)
+    , m_inputManager(inputManager)
 {
     setWindowTitle("UGV Control Station");
     resize(1280, 720);
@@ -49,13 +49,13 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     connect(&m_timer, &QTimer::timeout, this, [this]() { onTick(); });
     m_timer.start(30);
 
-    QSettings s("UGVControlStation", "connectionApp");
+    QSettings s("UGVControlStation", "UGVControlStation");
     if (s.contains("geometry"))    restoreGeometry(s.value("geometry").toByteArray());
     if (s.contains("windowState")) restoreState(s.value("windowState").toByteArray());
 }
 
 void MainWindow::onTick() {
-    m_keyboard.poll(m_state);
+    m_inputManager.poll(m_state);
 
     m_connection->refresh();
     m_control->refresh();
@@ -64,7 +64,7 @@ void MainWindow::onTick() {
 }
 
 void MainWindow::closeEvent(QCloseEvent* e) {
-    QSettings s("UGVControlStation", "connectionApp");
+    QSettings s("UGVControlStation", "UGVControlStation");
     s.setValue("geometry",    saveGeometry());
     s.setValue("windowState", saveState());
 

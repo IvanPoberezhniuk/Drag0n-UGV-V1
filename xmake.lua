@@ -12,7 +12,7 @@ add_requires("spdlog",        { configs = { header_only = true } })
 add_requires("nlohmann_json", { configs = { header_only = true } })
 add_requires("entt")
 
-target("connectionApp")
+target("UGVControlStation")
     add_rules("qt.widgetapp")
     add_files(
         "resources/app.qrc",
@@ -29,11 +29,13 @@ target("connectionApp")
         "src/io/SerialWorker.cpp",
         "src/crsf/CrsfPacket.cpp",
         "src/input/KeyboardInput.cpp",
+        "src/input/XInputGamepad.cpp",
+        "src/input/InputManager.cpp",
         "src/config/AppConfig.cpp"
     )
     add_includedirs("src")
     add_packages("spdlog", "nlohmann_json", "entt")
-    add_syslinks("kernel32", "user32", "winmm", "setupapi")
+    add_syslinks("kernel32", "user32", "winmm", "setupapi", "xinput")
 
     if is_mode("release") then
         set_optimize("faster")

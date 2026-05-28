@@ -71,13 +71,13 @@ xmake run
 ### With a specific config file
 
 ```bash
-xmake run connectionApp --config path\to\config.json
+xmake run UGVControlStation --config path\to\config.json
 ```
 
 ### With verbose logging
 
 ```bash
-xmake run connectionApp --verbose
+xmake run UGVControlStation --verbose
 ```
 
 ---
@@ -85,7 +85,7 @@ xmake run connectionApp --verbose
 ## Deploy (copy Qt DLLs next to the exe)
 
 ```bash
-windeployqt6 build\mingw\x86_64\release\connectionApp.exe
+windeployqt6 build\mingw\x86_64\release\UGVControlStation.exe
 ```
 
 After this the exe can be run directly without xmake.

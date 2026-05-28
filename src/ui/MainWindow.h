@@ -4,7 +4,7 @@
 #include "core/AppState.h"
 #include "config/AppConfig.h"
 #include "io/SerialWorker.h"
-#include "input/KeyboardInput.h"
+#include "input/InputManager.h"
 
 class ConnectionPanel;
 class ControlPanel;
@@ -14,7 +14,7 @@ class LogsPanel;
 class MainWindow : public QMainWindow {
 public:
     MainWindow(AppState& state, const AppConfig& config,
-               SerialWorker& worker, KeyboardInput& keyboard,
+               SerialWorker& worker, InputManager& inputManager,
                QWidget* parent = nullptr);
 
 protected:
@@ -26,7 +26,7 @@ private:
     AppState&        m_state;
     const AppConfig& m_config;
     SerialWorker&    m_worker;
-    KeyboardInput&   m_keyboard;
+    InputManager&    m_inputManager;
 
     ConnectionPanel* m_connection = nullptr;
     ControlPanel*    m_control    = nullptr;

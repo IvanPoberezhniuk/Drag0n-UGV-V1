@@ -1,11 +1,11 @@
 #pragma once
-#include "core/AppState.h"
+#include "input/IInputSource.h"
 
-class KeyboardInput {
+class KeyboardInput : public IInputSource {
 public:
-    // Poll keyboard state and update the ControlState component in appState.
-    // Call once per frame from the main thread.
-    void poll(AppState& appState);
+    InputFrame  poll()        override;
+    bool        isConnected() const override { return true; }
+    const char* name()        const override { return "Keyboard"; }
 
 private:
     bool m_prevEnter = false;
@@ -14,4 +14,5 @@ private:
     bool m_prev1     = false;
     bool m_prev2     = false;
     bool m_prev3     = false;
+    bool m_armed     = false;
 };

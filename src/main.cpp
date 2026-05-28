@@ -17,7 +17,9 @@
 #include "core/LogBuffer.h"
 #include "config/AppConfig.h"
 #include "io/SerialWorker.h"
+#include "input/InputManager.h"
 #include "input/KeyboardInput.h"
+#include "input/XInputGamepad.h"
 #include "ui/MainWindow.h"
 #include <filesystem>
 #include <memory>
@@ -46,7 +48,7 @@ int main(int argc, char** argv) {
         std::string a = argv[i];
         if (a == "--verbose" || a == "-v") verbose = true;
         if (a == "--help"    || a == "-h") {
-            printf("Usage: connectionApp [--config <path>] [--verbose]\n");
+            printf("Usage: UGVControlStation [--config <path>] [--verbose]\n");
             return 0;
         }
     }
@@ -55,10 +57,10 @@ int main(int argc, char** argv) {
     app.setWindowIcon(QIcon(":/icon.png"));
 
     // Single-instance guard via Win32 named mutex
-    HANDLE instanceMutex = CreateMutexW(nullptr, TRUE, L"connectionApp-single-instance");
+    HANDLE instanceMutex = CreateMutexW(nullptr, TRUE, L"UGVControlStation-single-instance");
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         CloseHandle(instanceMutex);
-        QMessageBox::warning(nullptr, "Already running", "connectionApp is already running.");
+        QMessageBox::warning(nullptr, "Already running", "UGVControlStation is already running.");
         return 1;
     }
 
@@ -108,7 +110,9 @@ int main(int argc, char** argv) {
     spdlog::default_logger()->sinks().push_back(uiSink);
 
     SerialWorker  worker(state, config);
-    KeyboardInput keyboard;
+    InputManager  inputManager;
+    inputManager.addSource(std::make_unique<KeyboardInput>());
+    inputManager.addSource(std::make_unique<XInputGamepad>(0));
 
     if (!config.serial.port.empty()) {
         worker.requestConnect(config.serial.port, config.serial.baudrate);
@@ -116,7 +120,7 @@ int main(int argc, char** argv) {
         state.registry.get<ConnectionState>(state.ugv).portName = config.serial.port;
     }
 
-    MainWindow window(state, config, worker, keyboard);
+    MainWindow window(state, config, worker, inputManager);
     window.show();
 
     worker.start();
