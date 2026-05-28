@@ -116,6 +116,19 @@ bool SerialPort::write(const uint8_t* data, size_t len) {
     return written == static_cast<DWORD>(len);
 }
 
+int SerialPort::read(uint8_t* buf, size_t maxLen) {
+    HANDLE h = static_cast<HANDLE>(m_handle);
+    if (h == INVALID_HANDLE_VALUE) return -1;
+    DWORD bytesRead = 0;
+    if (!ReadFile(h, buf, static_cast<DWORD>(maxLen), &bytesRead, nullptr)) {
+        DWORD err = GetLastError();
+        if (err == ERROR_OPERATION_ABORTED || err == ERROR_IO_PENDING) return 0;
+        spdlog::warn("SerialPort: read failed (error {})", err);
+        return -1;
+    }
+    return static_cast<int>(bytesRead);
+}
+
 // --- enumeration helpers ---
 
 static HDEVINFO openPortDevInfo() {

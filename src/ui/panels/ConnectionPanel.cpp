@@ -1,7 +1,6 @@
 #include "ui/panels/ConnectionPanel.h"
 #include "io/SerialPort.h"
 #include "core/ConnectionState.h"
-#include "core/Events.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QComboBox>
@@ -93,13 +92,13 @@ void ConnectionPanel::onConnectClicked() {
                   conn.status == ConnectionStatus::Connecting;
 
     if (active) {
-        m_state.dispatcher.enqueue<DisconnectEvent>();
+        m_worker.requestDisconnect();
     } else {
         QString portStr = m_portCombo->currentText();
         std::string port = (portStr == "auto") ? "auto" : portStr.toStdString();
         uint32_t baud = static_cast<uint32_t>(m_baudEdit->text().toInt());
         if (baud == 0) baud = 420000;
-        m_state.dispatcher.enqueue<ConnectEvent>(ConnectEvent{port, baud});
+        m_worker.requestConnect(port, baud);
     }
 }
 

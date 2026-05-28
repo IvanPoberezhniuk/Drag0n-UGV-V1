@@ -7,6 +7,9 @@
 #include <queue>
 #include <mutex>
 #include <string>
+#include <vector>
+#include <chrono>
+#include <cstdint>
 
 class SerialWorker {
 public:
@@ -16,7 +19,6 @@ public:
     void start();
     void stop();
 
-    // Push a connect command; safe to call from main thread.
     void requestConnect(const std::string& port, uint32_t baudrate);
     void requestDisconnect();
 
@@ -31,6 +33,9 @@ private:
     void drainCommands();
     void doConnect(const std::string& port, uint32_t baud);
     void doDisconnect();
+    void readAndParse();
+    void processRxBytes(const uint8_t* data, int len);
+    void parseTelemetryFrame(uint8_t type, const uint8_t* payload, size_t len);
 
     AppState&        m_state;
     const AppConfig& m_config;
@@ -41,4 +46,11 @@ private:
 
     std::thread       m_thread;
     std::atomic<bool> m_running{false};
+
+    std::vector<uint8_t> m_rxBuf;
+
+    std::string m_reconnectPort;
+    uint32_t    m_reconnectBaud = 0;
+    int         m_writeErrors   = 0;
+    std::chrono::steady_clock::time_point m_nextReconnect{};
 };

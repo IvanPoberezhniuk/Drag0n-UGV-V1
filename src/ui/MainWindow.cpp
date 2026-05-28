@@ -51,7 +51,6 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
 
 void MainWindow::onTick() {
     m_keyboard.poll(m_state);
-    m_state.dispatcher.update();
 
     m_connection->refresh();
     m_control->refresh();

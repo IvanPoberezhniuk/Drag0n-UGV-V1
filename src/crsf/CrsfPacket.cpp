@@ -2,7 +2,7 @@
 #include <cstring>
 
 // CRC8 DVB-S2, polynomial 0xD5
-static uint8_t crc8_dvbs2(const uint8_t* data, size_t len) {
+uint8_t crc8_dvbs2(const uint8_t* data, size_t len) {
     uint8_t crc = 0;
     for (size_t i = 0; i < len; ++i) {
         crc ^= data[i];

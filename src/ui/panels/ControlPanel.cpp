@@ -1,7 +1,6 @@
 #include "ui/panels/ControlPanel.h"
 #include "core/ControlState.h"
 #include "core/SafetyState.h"
-#include "core/Events.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QSlider>
@@ -10,6 +9,7 @@
 #include <QRadioButton>
 #include <QCheckBox>
 #include <QButtonGroup>
+#include <spdlog/spdlog.h>
 #include <mutex>
 
 ControlPanel::ControlPanel(AppState& state, QWidget* parent)
@@ -83,36 +83,37 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
     layout->addStretch();
 
     connect(m_armBtn, &QPushButton::clicked, this, [this]() {
-        ControlState ctrl;
-        {
-            std::lock_guard<std::mutex> lk(m_state.registryMutex);
-            ctrl = m_state.registry.get<ControlState>(m_state.ugv);
+        std::lock_guard<std::mutex> lk(m_state.registryMutex);
+        auto& ctrl   = m_state.registry.get<ControlState>(m_state.ugv);
+        auto& safety = m_state.registry.get<SafetyState>(m_state.ugv);
+        ctrl.armed = !ctrl.armed;
+        if (ctrl.armed) {
+            ctrl.estop          = false;
+            safety.estopLatched = false;
+            spdlog::info("UI: ARMED");
+        } else {
+            spdlog::info("UI: DISARMED");
         }
-        m_state.dispatcher.enqueue<ArmEvent>(ArmEvent{!ctrl.armed});
     });
 
     connect(m_estopBtn, &QPushButton::clicked, this, [this]() {
-        m_state.dispatcher.enqueue<EstopEvent>();
+        std::lock_guard<std::mutex> lk(m_state.registryMutex);
+        auto& ctrl   = m_state.registry.get<ControlState>(m_state.ugv);
+        auto& safety = m_state.registry.get<SafetyState>(m_state.ugv);
+        ctrl.estop          = true;
+        ctrl.armed          = false;
+        safety.estopLatched = true;
+        spdlog::warn("UI: EMERGENCY STOP");
     });
 
     connect(modeGroup, &QButtonGroup::idClicked, this, [this](int id) {
-        ControlState ctrl;
-        {
-            std::lock_guard<std::mutex> lk(m_state.registryMutex);
-            ctrl = m_state.registry.get<ControlState>(m_state.ugv);
-        }
-        m_state.dispatcher.enqueue<DriveInputEvent>(
-            DriveInputEvent{ctrl.throttle, ctrl.steering, id, ctrl.lightsOn});
+        std::lock_guard<std::mutex> lk(m_state.registryMutex);
+        m_state.registry.get<ControlState>(m_state.ugv).driveMode = id;
     });
 
     connect(m_lightsCheck, &QCheckBox::toggled, this, [this](bool checked) {
-        ControlState ctrl;
-        {
-            std::lock_guard<std::mutex> lk(m_state.registryMutex);
-            ctrl = m_state.registry.get<ControlState>(m_state.ugv);
-        }
-        m_state.dispatcher.enqueue<DriveInputEvent>(
-            DriveInputEvent{ctrl.throttle, ctrl.steering, ctrl.driveMode, checked});
+        std::lock_guard<std::mutex> lk(m_state.registryMutex);
+        m_state.registry.get<ControlState>(m_state.ugv).lightsOn = checked;
     });
 }
 

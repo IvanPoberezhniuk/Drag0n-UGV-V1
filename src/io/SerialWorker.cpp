@@ -63,6 +63,7 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
             auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
             conn.status       = ConnectionStatus::Error;
             conn.errorMessage = "Auto-detect: no ELRS TX module found";
+            m_nextReconnect   = Clock::now() + std::chrono::seconds(2);
             return;
         }
     }
@@ -72,16 +73,22 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
         auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
         conn.status   = ConnectionStatus::Connected;
         conn.portName = resolvedPort;
+        m_reconnectPort = port;   // keep original (may be "auto") for re-enumeration
+        m_reconnectBaud = baud;
+        m_writeErrors   = 0;
+        m_rxBuf.clear();
     } else {
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
         auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
         conn.status       = ConnectionStatus::Error;
         conn.errorMessage = "Failed to open " + resolvedPort;
+        m_nextReconnect   = Clock::now() + std::chrono::seconds(2);
     }
 }
 
 void SerialWorker::doDisconnect() {
     m_serial.close();
+    m_reconnectPort.clear(); // user-initiated disconnect: don't auto-reconnect
     std::lock_guard<std::mutex> lk(m_state.registryMutex);
     auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
     conn.status = ConnectionStatus::Disconnected;
@@ -101,6 +108,66 @@ void SerialWorker::drainCommands() {
         else
             doDisconnect();
         local.pop();
+    }
+}
+
+void SerialWorker::readAndParse() {
+    uint8_t tmp[256];
+    int n = m_serial.read(tmp, sizeof(tmp));
+    if (n > 0)
+        processRxBytes(tmp, n);
+}
+
+void SerialWorker::processRxBytes(const uint8_t* data, int len) {
+    m_rxBuf.insert(m_rxBuf.end(), data, data + len);
+
+    while (m_rxBuf.size() >= 4) {
+        if (m_rxBuf[0] != CRSF_SYNC) {
+            m_rxBuf.erase(m_rxBuf.begin());
+            continue;
+        }
+
+        uint8_t frameLen = m_rxBuf[1]; // type + payload + crc
+        if (frameLen < 2) {
+            m_rxBuf.erase(m_rxBuf.begin());
+            continue;
+        }
+
+        size_t total = 2u + frameLen;
+        if (m_rxBuf.size() < total)
+            break;
+
+        uint8_t expected = crc8_dvbs2(m_rxBuf.data() + 2, frameLen - 1);
+        if (expected != m_rxBuf[total - 1]) {
+            m_rxBuf.erase(m_rxBuf.begin());
+            continue;
+        }
+
+        uint8_t       type       = m_rxBuf[2];
+        const uint8_t* payload   = m_rxBuf.data() + 3;
+        size_t         payloadLen = frameLen - 2;
+        parseTelemetryFrame(type, payload, payloadLen);
+        m_rxBuf.erase(m_rxBuf.begin(), m_rxBuf.begin() + total);
+    }
+
+    if (m_rxBuf.size() > 512)
+        m_rxBuf.clear();
+}
+
+void SerialWorker::parseTelemetryFrame(uint8_t type, const uint8_t* payload, size_t len) {
+    if (type == CRSF_FRAMETYPE_LINK_STATISTICS && len >= 10) {
+        std::lock_guard<std::mutex> lk(m_state.registryMutex);
+        auto& t = m_state.registry.get<TelemetryState>(m_state.ugv);
+        t.rssi1 = payload[0]; // uplink RSSI ant1 (positive, actual is -dBm)
+        t.rssi2 = payload[1]; // uplink RSSI ant2
+        t.lq    = payload[2]; // uplink link quality (0-100%)
+        t.valid = true;
+    } else if (type == CRSF_FRAMETYPE_BATTERY_SENSOR && len >= 8) {
+        float voltage = static_cast<float>((payload[0] << 8) | payload[1]) * 0.1f;
+        std::lock_guard<std::mutex> lk(m_state.registryMutex);
+        auto& t          = m_state.registry.get<TelemetryState>(m_state.ugv);
+        t.batteryVoltage = voltage;
+        t.valid          = true;
     }
 }
 
@@ -136,12 +203,29 @@ void SerialWorker::loop() {
             m_state.registry.get<SafetyState>(m_state.ugv) = safety;
         }
 
-        // Build and send CRSF packet
         if (m_serial.isOpen()) {
+            readAndParse();
+
             auto rc  = DroneControlService::mapChannels(ctrl, m_config.channels);
             auto pkt = buildRcChannelsPacket(rc);
-            m_serial.write(pkt.data(), pkt.size());
-            ++frameCount;
+            if (m_serial.write(pkt.data(), pkt.size())) {
+                ++frameCount;
+                m_writeErrors = 0;
+            } else if (++m_writeErrors >= 5) {
+                spdlog::warn("SerialWorker: {} write errors — closing for reconnect", m_writeErrors);
+                m_serial.close();
+                m_writeErrors   = 0;
+                m_nextReconnect = Clock::now() + std::chrono::seconds(2);
+                std::lock_guard<std::mutex> lk(m_state.registryMutex);
+                auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
+                conn.status       = ConnectionStatus::Error;
+                conn.errorMessage = "Connection lost — retrying in 2s";
+                conn.pktPerSec    = 0;
+            }
+        } else if (!m_reconnectPort.empty() && Clock::now() >= m_nextReconnect) {
+            m_nextReconnect = Clock::now() + std::chrono::seconds(2);
+            spdlog::info("SerialWorker: auto-reconnecting to {}", m_reconnectPort);
+            doConnect(m_reconnectPort, m_reconnectBaud);
         }
 
         // Update pkt/s stats once per second
@@ -154,7 +238,6 @@ void SerialWorker::loop() {
             statsTimer = Clock::now();
         }
 
-        // Sleep for remainder of frame interval
         auto frameDuration = Clock::now() - frameStart;
         if (frameDuration < intervalUs)
             std::this_thread::sleep_for(intervalUs - frameDuration);

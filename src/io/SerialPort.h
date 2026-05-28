@@ -17,6 +17,7 @@ public:
     void close();
     bool isOpen() const;
     bool write(const uint8_t* data, size_t len);
+    int  read(uint8_t* buf, size_t maxLen); // 0 = nothing available, -1 = error
 
     // Enumerate all present COM ports matching known ELRS TX USB chips.
     // Returns the first match, or empty string if none found.
