@@ -1,6 +1,7 @@
 #pragma once
 #include <QWidget>
 #include "core/AppState.h"
+#include "config/AppConfig.h"
 #include "io/SerialWorker.h"
 
 class QComboBox;
@@ -10,7 +11,8 @@ class QLabel;
 
 class ConnectionPanel : public QWidget {
 public:
-    explicit ConnectionPanel(AppState& state, SerialWorker& worker, QWidget* parent = nullptr);
+    explicit ConnectionPanel(AppState& state, SerialWorker& worker,
+                             const AppConfig& config, QWidget* parent = nullptr);
     void refresh();
 
 private:

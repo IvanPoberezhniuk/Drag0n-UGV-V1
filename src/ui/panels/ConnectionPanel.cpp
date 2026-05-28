@@ -29,7 +29,8 @@ static QString statusStyle(ConnectionStatus s) {
     return "";
 }
 
-ConnectionPanel::ConnectionPanel(AppState& state, SerialWorker& worker, QWidget* parent)
+ConnectionPanel::ConnectionPanel(AppState& state, SerialWorker& worker,
+                                 const AppConfig& config, QWidget* parent)
     : QWidget(parent), m_state(state), m_worker(worker)
 {
     auto* layout = new QVBoxLayout(this);
@@ -48,7 +49,7 @@ ConnectionPanel::ConnectionPanel(AppState& state, SerialWorker& worker, QWidget*
 
     auto* baudRow = new QHBoxLayout;
     baudRow->addWidget(new QLabel("Baud:", this));
-    m_baudEdit = new QLineEdit("420000", this);
+    m_baudEdit = new QLineEdit(QString::number(config.serial.baudrate), this);
     m_baudEdit->setMaximumWidth(100);
     baudRow->addWidget(m_baudEdit);
     baudRow->addStretch();

@@ -30,12 +30,22 @@ AppConfig AppConfig::load(const std::string& path) {
         }
         if (j.contains("channels")) {
             auto& ch = j["channels"];
-            if (ch.contains("steering")) cfg.channels.steering = ch["steering"].get<int>();
-            if (ch.contains("throttle")) cfg.channels.throttle = ch["throttle"].get<int>();
-            if (ch.contains("mode"))     cfg.channels.mode     = ch["mode"].get<int>();
-            if (ch.contains("lights"))   cfg.channels.lights   = ch["lights"].get<int>();
-            if (ch.contains("arm"))      cfg.channels.arm      = ch["arm"].get<int>();
-            if (ch.contains("estop"))    cfg.channels.estop    = ch["estop"].get<int>();
+            auto loadCh = [&](const char* key, int& field) {
+                if (!ch.contains(key)) return;
+                int v = ch[key].get<int>();
+                if (v >= 1 && v <= 16) {
+                    field = v;
+                } else {
+                    spdlog::warn("AppConfig: channel '{}' = {} out of range [1-16], keeping default {}",
+                                 key, v, field);
+                }
+            };
+            loadCh("steering", cfg.channels.steering);
+            loadCh("throttle", cfg.channels.throttle);
+            loadCh("mode",     cfg.channels.mode);
+            loadCh("lights",   cfg.channels.lights);
+            loadCh("arm",      cfg.channels.arm);
+            loadCh("estop",    cfg.channels.estop);
         }
 
         spdlog::info("AppConfig: loaded '{}' — serial={} @{} baud, {}Hz",
