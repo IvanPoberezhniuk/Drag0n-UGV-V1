@@ -7,10 +7,56 @@
 #include <QPushButton>
 #include <QLabel>
 #include <QRadioButton>
-#include <QCheckBox>
 #include <QButtonGroup>
+#include <QPainter>
+#include <QMouseEvent>
 #include <spdlog/spdlog.h>
 #include <mutex>
+
+// ── ToggleSwitch ─────────────────────────────────────────────────────────────
+static constexpr int kTrackW = 40;
+static constexpr int kTrackH = 20;
+static constexpr int kThumb  = 14;
+
+ToggleSwitch::ToggleSwitch(const QString& label, QWidget* parent)
+    : QAbstractButton(parent), m_label(label)
+{
+    setCheckable(true);
+    setCursor(Qt::PointingHandCursor);
+}
+
+QSize ToggleSwitch::sizeHint() const {
+    QFontMetrics fm(font());
+    int textW = m_label.isEmpty() ? 0 : fm.horizontalAdvance(m_label) + 6;
+    return { kTrackW + textW, kTrackH + 6 };
+}
+
+void ToggleSwitch::paintEvent(QPaintEvent*) {
+    QPainter p(this);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    bool on = isChecked();
+    int  r  = kTrackH / 2;
+
+    // Track
+    QColor track = on ? QColor(30, 160, 30) : QColor(80, 80, 80);
+    p.setPen(Qt::NoPen);
+    p.setBrush(track);
+    p.drawRoundedRect(QRectF(0, (height() - kTrackH) / 2.0, kTrackW, kTrackH), r, r);
+
+    // Thumb
+    int thumbX = on ? kTrackW - kThumb - 3 : 3;
+    int thumbY = (height() - kThumb) / 2;
+    p.setBrush(QColor(220, 220, 220));
+    p.drawEllipse(thumbX, thumbY, kThumb, kThumb);
+
+    // Label
+    if (!m_label.isEmpty()) {
+        p.setPen(palette().color(QPalette::WindowText));
+        p.drawText(kTrackW + 6, 0, width() - kTrackW - 6, height(),
+                   Qt::AlignVCenter | Qt::AlignLeft, m_label);
+    }
+}
 
 ControlPanel::ControlPanel(AppState& state, QWidget* parent)
     : QWidget(parent), m_state(state)
@@ -45,8 +91,7 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
     m_armBtn->setMinimumHeight(30);
     m_estopBtn = new QPushButton("ESTOP", this);
     m_estopBtn->setMinimumHeight(30);
-    m_estopBtn->setStyleSheet("QPushButton { background-color: #cc0000; color: white; }"
-                               "QPushButton:hover { background-color: #ff2222; }");
+    // Style updated in refresh() based on active estop state
     btnRow->addWidget(m_armBtn);
     btnRow->addWidget(m_estopBtn);
     layout->addLayout(btnRow);
@@ -59,9 +104,9 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
     // Drive mode
     auto* modeRow = new QHBoxLayout;
     modeRow->addWidget(new QLabel("Drive mode:", this));
-    m_mode1 = new QRadioButton("1", this);
-    m_mode2 = new QRadioButton("2", this);
-    m_mode3 = new QRadioButton("3", this);
+    m_mode1 = new QRadioButton("2WD", this);
+    m_mode2 = new QRadioButton("4WD", this);
+    m_mode3 = new QRadioButton("6WD", this);
     m_mode1->setChecked(true);
     auto* modeGroup = new QButtonGroup(this);
     modeGroup->addButton(m_mode1, 1);
@@ -74,8 +119,8 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
     layout->addLayout(modeRow);
 
     // Lights
-    m_lightsCheck = new QCheckBox("Lights", this);
-    layout->addWidget(m_lightsCheck);
+    m_lightsSwitch = new ToggleSwitch("Lights", this);
+    layout->addWidget(m_lightsSwitch);
     layout->addStretch();
 
     connect(m_armBtn, &QPushButton::clicked, this, [this]() {
@@ -107,7 +152,7 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
         m_state.registry.get<ControlState>(m_state.ugv).driveMode = id;
     });
 
-    connect(m_lightsCheck, &QCheckBox::toggled, this, [this](bool checked) {
+    connect(m_lightsSwitch, &QAbstractButton::toggled, this, [this](bool checked) {
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
         m_state.registry.get<ControlState>(m_state.ugv).lightsOn = checked;
     });
@@ -138,11 +183,20 @@ void ControlPanel::refresh() {
 
     m_latchLabel->setVisible(safety.estopLatched);
 
+    bool estopActive = ctrl.estop || safety.estopLatched;
+    if (estopActive) {
+        m_estopBtn->setStyleSheet("QPushButton { background-color: #cc0000; color: white; }"
+                                  "QPushButton:hover { background-color: #ff2222; }");
+    } else {
+        m_estopBtn->setStyleSheet("QPushButton { background-color: #4a1a1a; color: #aa6666; }"
+                                  "QPushButton:hover { background-color: #6a2020; color: #dd8888; }");
+    }
+
     if      (ctrl.driveMode == 1) m_mode1->setChecked(true);
     else if (ctrl.driveMode == 2) m_mode2->setChecked(true);
     else if (ctrl.driveMode == 3) m_mode3->setChecked(true);
 
-    m_lightsCheck->blockSignals(true);
-    m_lightsCheck->setChecked(ctrl.lightsOn);
-    m_lightsCheck->blockSignals(false);
+    m_lightsSwitch->blockSignals(true);
+    m_lightsSwitch->setChecked(ctrl.lightsOn);
+    m_lightsSwitch->blockSignals(false);
 }

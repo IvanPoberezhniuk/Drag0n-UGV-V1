@@ -95,6 +95,7 @@ void InputManager::poll(AppState& state) {
     }
     if (setDriveMode > 0) {
         ctrl.driveMode = setDriveMode;
-        spdlog::info("Input: drive mode {}", setDriveMode);
+        const char* modeNames[] = { "", "2WD", "4WD", "6WD" };
+        spdlog::info("Input: drive mode {}", modeNames[setDriveMode]);
     }
 }

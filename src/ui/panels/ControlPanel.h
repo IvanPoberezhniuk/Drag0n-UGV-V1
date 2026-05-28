@@ -1,4 +1,5 @@
 #pragma once
+#include <QAbstractButton>
 #include <QWidget>
 #include "core/AppState.h"
 
@@ -6,7 +7,16 @@ class QProgressBar;
 class QPushButton;
 class QLabel;
 class QRadioButton;
-class QCheckBox;
+
+class ToggleSwitch : public QAbstractButton {
+public:
+    explicit ToggleSwitch(const QString& label, QWidget* parent = nullptr);
+    QSize sizeHint() const override;
+protected:
+    void paintEvent(QPaintEvent*) override;
+private:
+    QString m_label;
+};
 
 class ControlPanel : public QWidget {
 public:
@@ -26,5 +36,5 @@ private:
     QRadioButton* m_mode1          = nullptr;
     QRadioButton* m_mode2          = nullptr;
     QRadioButton* m_mode3          = nullptr;
-    QCheckBox*    m_lightsCheck    = nullptr;
+    ToggleSwitch* m_lightsSwitch   = nullptr;
 };

@@ -1,5 +1,6 @@
 #include "ui/panels/WheelPanel.h"
 #include "core/ControlState.h"
+#include "core/SafetyState.h"
 #include <QPainter>
 #include <cmath>
 
@@ -46,18 +47,25 @@ void WheelPanel::paintEvent(QPaintEvent*) {
     p.setBrush(QColor(0, 0, 0, 140));
     p.drawRoundedRect(QRectF(0, 0, kBaseW, kBaseH), 6, 6);
 
-    bool  armed    = false;
-    float throttle = 0.0f;
-    float steering = 0.0f;
+    bool  armed     = false;
+    bool  braked    = false;
+    bool  lightsOn  = false;
+    float throttle  = 0.0f;
+    float steering  = 0.0f;
+    int   driveMode = 1;
     {
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
         if (m_state.ugv != entt::null &&
             m_state.registry.all_of<ControlState>(m_state.ugv))
         {
-            auto& ctrl = m_state.registry.get<ControlState>(m_state.ugv);
-            armed    = ctrl.armed;
-            throttle = ctrl.throttle;
-            steering = ctrl.steering;
+            auto& ctrl   = m_state.registry.get<ControlState>(m_state.ugv);
+            auto& safety = m_state.registry.get<SafetyState>(m_state.ugv);
+            armed     = ctrl.armed;
+            braked    = ctrl.estop || safety.estopLatched;
+            lightsOn  = ctrl.lightsOn;
+            throttle  = ctrl.throttle;
+            steering  = ctrl.steering;
+            driveMode = ctrl.driveMode;
         }
     }
 
@@ -65,6 +73,16 @@ void WheelPanel::paintEvent(QPaintEvent*) {
     float rightPow = throttle + steering * 0.5f;
     bool  leftOn   = armed && std::abs(leftPow)  > 0.05f;
     bool  rightOn  = armed && std::abs(rightPow) > 0.05f;
+
+    // row 0 = front, row 1 = middle, row 2 = rear
+    // 2WD=1: rear only | 4WD=2: middle+rear | 6WD=3: all
+    auto rowEngaged = [&](int row) -> bool {
+        switch (driveMode) {
+            case 1:  return row == 2;
+            case 2:  return row >= 1;
+            default: return true;
+        }
+    };
 
     int bodyX = kPad + kWW + kGX;
     int bodyY = kPad;
@@ -74,42 +92,53 @@ void WheelPanel::paintEvent(QPaintEvent*) {
     p.setBrush(QColor(42, 44, 48));
     p.drawRoundedRect(QRectF(bodyX, bodyY, kBW, kBodyH), 5, 5);
 
-    // Front direction arrow
+    // Light bar (narrow strip at front — always visible)
     {
-        int cx = bodyX + kBW / 2;
-        QPolygonF arrow;
-        arrow << QPointF(cx - 6, bodyY + 12)
-              << QPointF(cx + 6, bodyY + 12)
-              << QPointF(cx,     bodyY + 4);
-        p.setPen(Qt::NoPen);
-        p.setBrush(QColor(170, 170, 170));
-        p.drawPolygon(arrow);
+        if (lightsOn) {
+            p.setPen(Qt::NoPen);
+            p.setBrush(QColor(255, 240, 185));
+        } else {
+            p.setPen(QPen(QColor(90, 90, 90), 1));
+            p.setBrush(QColor(55, 55, 55));
+        }
+        p.drawRect(QRectF(bodyX + 2, bodyY, kBW - 4, 7));
     }
 
-    // Wheels
+    // Wheels — four visual states per engaged wheel:
+    //   braked / unarmed                    → red
+    //   spinning (armed + engaged + power)  → green
+    //   engaged  (armed, no power)          → blue-grey
+    //   disabled (not in drive mode)        → dark grey
     for (int i = 0; i < 3; ++i) {
-        int wy    = kPad + i * (kWH + kWGap);
-        int axleY = wy + kWH / 2;
+        int wy      = kPad + i * (kWH + kWGap);
+        int axleY   = wy + kWH / 2;
+        bool engaged = rowEngaged(i);
+
+        auto wheelColors = [&](bool sideOn) -> std::pair<QColor, QColor> {
+            if (!engaged)
+                return { QColor(38, 38, 38),   QColor(58,  58,  58)  };  // disabled
+            if (!armed || braked)
+                return { QColor(170, 28, 28),  QColor(220, 55,  55)  };  // braked / unarmed
+            if (sideOn)
+                return { QColor(50, 210, 50),  QColor(100, 255, 100) };  // spinning
+            return     { QColor(55, 80, 110),  QColor(80,  115, 155) };  // engaged, idle
+        };
 
         // Left wheel
-        QRectF lwRect(kPad, wy, kWW, kWH);
-        QColor lFill   = leftOn  ? QColor(50, 210, 50)  : QColor(55, 55, 55);
-        QColor lBorder = leftOn  ? QColor(100, 255, 100) : QColor(88, 88, 88);
+        auto [lFill, lBorder] = wheelColors(leftOn);
         p.setPen(QPen(QColor(70, 70, 70), 1));
         p.drawLine(kPad + kWW, axleY, bodyX, axleY);
         p.setPen(QPen(lBorder, 1));
         p.setBrush(lFill);
-        p.drawRoundedRect(lwRect, 3, 3);
+        p.drawRoundedRect(QRectF(kPad, wy, kWW, kWH), 3, 3);
 
         // Right wheel
         int rx = bodyX + kBW + kGX;
-        QRectF rwRect(rx, wy, kWW, kWH);
-        QColor rFill   = rightOn ? QColor(50, 210, 50)  : QColor(55, 55, 55);
-        QColor rBorder = rightOn ? QColor(100, 255, 100) : QColor(88, 88, 88);
+        auto [rFill, rBorder] = wheelColors(rightOn);
         p.setPen(QPen(QColor(70, 70, 70), 1));
         p.drawLine(bodyX + kBW, axleY, rx, axleY);
         p.setPen(QPen(rBorder, 1));
         p.setBrush(rFill);
-        p.drawRoundedRect(rwRect, 3, 3);
+        p.drawRoundedRect(QRectF(rx, wy, kWW, kWH), 3, 3);
     }
 }
