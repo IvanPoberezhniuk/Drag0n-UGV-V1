@@ -35,7 +35,7 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     m_telemetry  = new TelemetryPanel(m_state, this);
     m_logs       = new LogsPanel(m_state, this);
     m_legend     = new LegendPanel(m_state, this);
-    m_video      = new VideoPanel(this);
+    m_video      = new VideoPanel(m_state, this);
 
     setCentralWidget(m_video);
 
@@ -107,7 +107,7 @@ void MainWindow::applyDefaultLayout() {
 }
 
 void MainWindow::openSettings() {
-    SettingsDialog dlg(this);
+    SettingsDialog dlg(m_state, this);
     dlg.exec();
 }
 
@@ -119,6 +119,7 @@ void MainWindow::onTick() {
     m_telemetry->refresh();
     m_logs->refresh();
     m_legend->refresh();
+    m_video->refresh();
 }
 
 void MainWindow::closeEvent(QCloseEvent* e) {

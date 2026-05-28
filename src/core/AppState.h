@@ -24,6 +24,7 @@ struct AppState {
 
     std::atomic<bool> quit{false};
 
-    InputType activeInput = InputType::Keyboard;
+    InputType          activeInput      = InputType::Keyboard;
+    std::atomic<int>   wheelSizePercent {100};
     LogBuffer logs;
 };

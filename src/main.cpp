@@ -103,8 +103,13 @@ int main(int argc, char** argv) {
         QString family = s.value("ui/fontFamily", "Segoe UI").toString();
         int     size   = s.value("ui/fontSize",   config.ui.fontSize).toInt();
         app.setFont(QFont(family, size));
+        // wheelSizePercent is applied to AppState after state is created below
     }
     AppState state;
+    {
+        QSettings s("UGVControlStation", "UGVControlStation");
+        state.wheelSizePercent.store(s.value("ui/wheelSize", 100).toInt());
+    }
     state.ugv = state.registry.create();
     state.registry.emplace<ControlState>(state.ugv);
     state.registry.emplace<TelemetryState>(state.ugv);
