@@ -58,7 +58,8 @@ SettingsDialog::SettingsDialog(AppState& state, QWidget* parent)
     , m_originalBindings(state.keyBindings)
 {
     setWindowTitle("Preferences");
-    setMinimumSize(560, 420);
+    setMinimumSize(1120, 840);
+    resize(1120, 840);
 
     m_sidebar = new QListWidget(this);
     m_sidebar->setFixedWidth(120);
