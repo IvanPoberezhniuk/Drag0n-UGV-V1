@@ -21,6 +21,8 @@ target("UGVControlStation")
         "src/ui/MainWindow.cpp",
         "src/ui/SettingsDialog.cpp",
         "src/ui/SettingsDialog.h",
+        "src/ui/CompassBar.cpp",
+        "src/ui/CompassBar.h",
         "src/ui/panels/ConnectionPanel.cpp",
         "src/ui/panels/ControlPanel.cpp",
         "src/ui/panels/TelemetryPanel.cpp",

@@ -1,6 +1,9 @@
 #include "ui/panels/VideoPanel.h"
 #include "ui/panels/WheelPanel.h"
+#include "ui/CompassBar.h"
+#include "core/TelemetryState.h"
 #include <QPainter>
+#include <mutex>
 
 static constexpr int kNoiseW = 480;
 static constexpr int kNoiseH = 360;
@@ -15,6 +18,9 @@ VideoPanel::VideoPanel(AppState& state, QWidget* parent)
 
     m_wheels = new WheelPanel(state, this);
     m_wheels->show();
+
+    m_compass = new CompassBar(this);
+    m_compass->show();
 }
 
 void VideoPanel::generateNoise() {
@@ -37,6 +43,14 @@ void VideoPanel::refresh() {
     generateNoise();
     m_wheels->refresh();
     repositionWheels();
+
+    {
+        std::lock_guard<std::mutex> lk(m_state.registryMutex);
+        auto& telem = m_state.registry.get<TelemetryState>(m_state.ugv);
+        m_compass->setHeading(telem.heading, telem.valid);
+    }
+    repositionCompass();
+
     update();
 }
 
@@ -71,6 +85,7 @@ void VideoPanel::paintEvent(QPaintEvent*) {
 void VideoPanel::resizeEvent(QResizeEvent* e) {
     QWidget::resizeEvent(e);
     repositionWheels();
+    repositionCompass();
 }
 
 void VideoPanel::repositionWheels() {
@@ -78,4 +93,10 @@ void VideoPanel::repositionWheels() {
     constexpr int margin = 8;
     m_wheels->move(margin, height() - m_wheels->height() - margin);
     m_wheels->raise();
+}
+
+void VideoPanel::repositionCompass() {
+    if (!m_compass) return;
+    m_compass->setGeometry(0, 0, width(), 44);
+    m_compass->raise();
 }
