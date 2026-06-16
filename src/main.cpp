@@ -60,9 +60,12 @@ int main(int argc, char** argv) {
     app.setWindowIcon(QIcon(":/icon.png"));
 
     // Single-instance guard via Win32 named mutex
-    HANDLE instanceMutex = CreateMutexW(nullptr, TRUE, L"UGVControlStation-single-instance");
+    struct MutexGuard {
+        HANDLE handle = nullptr;
+        ~MutexGuard() { if (handle) CloseHandle(handle); }
+    } instanceMutex;
+    instanceMutex.handle = CreateMutexW(nullptr, TRUE, L"UGVControlStation-single-instance");
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        CloseHandle(instanceMutex);
         QMessageBox::warning(nullptr, "Already running", "UGVControlStation is already running.");
         return 1;
     }

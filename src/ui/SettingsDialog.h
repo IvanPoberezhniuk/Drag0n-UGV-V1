@@ -41,9 +41,9 @@ private:
 
     // Controls page
     QTableWidget*   m_bindingsTable = nullptr;
-    KeyBindings     m_editedBindings;
-    KeyBindings     m_originalBindings;
 
-    QFont m_originalFont;
-    int   m_originalWheelSize = 100;
+    QFont       m_originalFont;
+    int         m_originalWheelSize = 100;
+    KeyBindings m_editedBindings;
+    KeyBindings m_originalBindings;
 };
