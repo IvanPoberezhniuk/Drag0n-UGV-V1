@@ -5,59 +5,54 @@ Qt6 desktop app for controlling an unmanned ground vehicle over CRSF/serial (ELR
 ## Requirements
 
 - [MSYS2](https://www.msys2.org/) with the UCRT64 toolchain
-- [xmake](https://xmake.io/)
+- [CMake](https://cmake.org/) 3.21+ and [Ninja](https://ninja-build.org/)
 
 Install Qt6 and the MinGW toolchain via MSYS2 (one-time):
 
 ```bash
 pacman -S mingw-w64-ucrt-x86_64-gcc \
-          mingw-w64-ucrt-x86_64-qt6-base
+          mingw-w64-ucrt-x86_64-qt6-base \
+          mingw-w64-ucrt-x86_64-qt6-declarative \
+          mingw-w64-ucrt-x86_64-ninja
 ```
+
+`spdlog`, `nlohmann_json`, and `entt` are fetched automatically by CMake
+(`FetchContent`) — no separate install step.
 
 ---
 
 ## Build
 
-### Configure (first time or after changing xmake.lua)
+Qt's host tools (rcc, moc, qmlimportscanner, ...) need their DLLs on `PATH`
+at configure and build time, so put `C:\msys64\ucrt64\bin` on `PATH` first.
+
+### Configure (first time or after changing CMakeLists.txt)
 
 ```bash
-xmake f -c -p mingw --mingw=C:\msys64\ucrt64 --qt=C:\msys64\ucrt64
+cmake -G Ninja -B build_cmake ^
+  -DCMAKE_PREFIX_PATH=C:/msys64/ucrt64 ^
+  -DCMAKE_CXX_COMPILER=C:/msys64/ucrt64/bin/g++.exe ^
+  -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe ^
+  -DCMAKE_BUILD_TYPE=Release
 ```
 
 ### Build
 
 ```bash
-xmake
-```
-
-### Configure + build in one step
-
-```bash
-xmake f -c -p mingw --mingw=C:\msys64\ucrt64 --qt=C:\msys64\ucrt64 && xmake
-```
-
-### Build with verbose output
-
-```bash
-xmake -v
+cmake --build build_cmake
 ```
 
 ### Debug build
 
 ```bash
-xmake f -m debug && xmake
-```
-
-### Release build (default)
-
-```bash
-xmake f -m release && xmake
+cmake -B build_cmake -DCMAKE_BUILD_TYPE=Debug
+cmake --build build_cmake
 ```
 
 ### Clean build artifacts
 
 ```bash
-xmake clean
+cmake --build build_cmake --target clean
 ```
 
 ---
@@ -65,19 +60,13 @@ xmake clean
 ## Run
 
 ```bash
-xmake run
+build_cmake\UGVControlStation.exe
 ```
 
 ### With a specific config file
 
 ```bash
-xmake run UGVControlStation --config path\to\config.json
-```
-
-### With verbose logging
-
-```bash
-xmake run UGVControlStation --verbose
+build_cmake\UGVControlStation.exe --config path\to\config.json
 ```
 
 ---
@@ -85,22 +74,18 @@ xmake run UGVControlStation --verbose
 ## Deploy (copy Qt DLLs next to the exe)
 
 ```bash
-windeployqt6 build\mingw\x86_64\release\UGVControlStation.exe
+windeployqt6 build_cmake\UGVControlStation.exe
 ```
 
-After this the exe can be run directly without xmake.
+After this the exe can be run directly without the MSYS2 `bin` on `PATH`.
 
 ---
 
 ## IntelliSense (VS Code)
 
-Generate `compile_commands.json` so the C/C++ extension resolves all includes:
-
-```bash
-xmake project -k compile_commands
-```
-
-Re-run this whenever you add packages or change `xmake.lua`.
+`compile_commands.json` is generated automatically in `build_cmake/` on every
+configure (`CMAKE_EXPORT_COMPILE_COMMANDS=ON` is set in `CMakeLists.txt`), and
+`.vscode/c_cpp_properties.json` already points there.
 
 ---
 

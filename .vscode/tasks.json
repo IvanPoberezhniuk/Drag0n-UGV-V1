@@ -2,14 +2,17 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "xmake: configure",
+      "label": "cmake: configure",
       "type": "shell",
-      "command": "xmake",
+      "command": "C:\\Program Files\\CMake\\bin\\cmake.exe",
       "args": [
-        "f", "-c",
-        "-p", "mingw",
-        "--mingw=C:\\msys64\\ucrt64",
-        "--qt=C:\\msys64\\ucrt64"
+        "-G", "Ninja",
+        "-B", "build_cmake",
+        "-DCMAKE_PREFIX_PATH=C:/msys64/ucrt64",
+        "-DCMAKE_CXX_COMPILER=C:/msys64/ucrt64/bin/g++.exe",
+        "-DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
       ],
       "options": {
         "env": {
@@ -20,10 +23,10 @@
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
-      "label": "xmake: build",
+      "label": "cmake: build",
       "type": "shell",
-      "command": "xmake",
-      "args": ["-v"],
+      "command": "C:\\Program Files\\CMake\\bin\\cmake.exe",
+      "args": ["--build", "build_cmake"],
       "options": {
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"
@@ -33,9 +36,9 @@
       "presentation": { "reveal": "always", "panel": "shared" }
     },
     {
-      "label": "xmake: configure & build",
+      "label": "cmake: configure & build",
       "dependsOrder": "sequence",
-      "dependsOn": ["xmake: configure", "xmake: build"],
+      "dependsOn": ["cmake: configure", "cmake: build"],
       "group": "build"
     }
   ]
