@@ -17,6 +17,8 @@
 #include <QSettings>
 #include <QTimer>
 #include <QShowEvent>
+#include <chrono>
+#include <mutex>
 
 MainWindow::MainWindow(AppState& state, const AppConfig& config,
                        SerialWorker& worker, InputManager& inputManager,

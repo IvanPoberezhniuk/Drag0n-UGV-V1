@@ -67,9 +67,9 @@ bool SerialPort::open(const std::string& portName, uint32_t baud) {
     dcb.fRtsControl     = RTS_CONTROL_DISABLE;
 
     if (!SetCommState(h, &dcb)) {
-        spdlog::error("SerialPort: SetCommState failed (error {}). "
-                      "If baud {} is unsupported try 400000 or 500000.",
-                      GetLastError(), baud);
+        spdlog::error("SerialPort: SetCommState failed for baud {} (error {}). "
+                      "The RadioMaster Nomad CRSF input normally uses 400000 baud.",
+                      baud, GetLastError());
         CloseHandle(h);
         return false;
     }

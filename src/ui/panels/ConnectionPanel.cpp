@@ -87,7 +87,7 @@ void ConnectionPanel::onConnectClicked() {
         QString portStr = m_portCombo->currentText();
         std::string port = (portStr == "auto") ? "auto" : portStr.toStdString();
         uint32_t baud = static_cast<uint32_t>(m_baudEdit->text().toInt());
-        if (baud == 0) baud = 420000;
+        if (baud == 0) baud = 400000;
         m_worker.requestConnect(port, baud);
     }
 }

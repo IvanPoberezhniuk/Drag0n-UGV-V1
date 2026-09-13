@@ -34,6 +34,7 @@ private:
     void doConnect(const std::string& port, uint32_t baud);
     void doDisconnect();
     void readAndParse();
+    void forceSafeState();
 
     AppState&        m_state;
     const AppConfig& m_config;

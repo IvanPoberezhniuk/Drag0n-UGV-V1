@@ -1,4 +1,5 @@
 # CMake build output
+/build/
 build_cmake/
 
 # MacOS Cache

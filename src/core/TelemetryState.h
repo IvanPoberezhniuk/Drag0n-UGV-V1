@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <chrono>
 
 struct TelemetryState {
@@ -8,6 +9,9 @@ struct TelemetryState {
     float batteryVoltage = 0.0f;
     float speed          = 0.0f;
     float heading        = 0.0f;
+    std::array<int, 6>  motorRpm{};
+    std::array<bool, 6> motorRpmValid{};
     bool  valid          = false;
     std::chrono::steady_clock::time_point lastReceived{};
+    std::array<std::chrono::steady_clock::time_point, 6> motorRpmLastReceived{};
 };

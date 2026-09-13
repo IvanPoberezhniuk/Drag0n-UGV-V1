@@ -40,6 +40,15 @@ void SerialWorker::requestDisconnect() {
     m_commands.push({Command::Type::Disconnect, {}, 0});
 }
 
+void SerialWorker::forceSafeState() {
+    std::lock_guard<std::mutex> lk(m_state.registryMutex);
+    auto& ctrl = m_state.registry.get<ControlState>(m_state.ugv);
+    ctrl.armed = false;
+    ctrl.estop = true;
+    ctrl.throttle = 0.0f;
+    ctrl.steering = 0.0f;
+}
+
 void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
     if (m_serial.isOpen()) m_serial.close();
 
@@ -65,6 +74,17 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
     }
 
     if (m_serial.open(resolvedPort, baud)) {
+        // Nomad's USB UART is a secondary CRSF port. With no radio handset on
+        // the module-bay pin, stock ELRS does not otherwise start its RF timer.
+        // A one-shot bind command starts it; ELRS returns to the saved UID after
+        // the short bind burst while neutral RC frames continue below.
+        const auto rfStart = buildTxBindCommandPacket();
+        if (m_serial.write(rfStart.data(), rfStart.size())) {
+            spdlog::info("SerialWorker: sent standalone USB RF-start command");
+        } else {
+            spdlog::warn("SerialWorker: failed to send standalone USB RF-start command");
+        }
+
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
         auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
         conn.status   = ConnectionStatus::Connected;
@@ -85,6 +105,7 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
 void SerialWorker::doDisconnect() {
     m_serial.close();
     m_reconnectPort.clear();
+    forceSafeState();
     std::lock_guard<std::mutex> lk(m_state.registryMutex);
     auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
     conn.status = ConnectionStatus::Disconnected;
@@ -128,6 +149,19 @@ void SerialWorker::readAndParse() {
             t.batteryVoltage = bat.voltage;
             t.valid          = true;
             t.lastReceived   = Clock::now();
+        },
+        [this](const CrsfFrameParser::RpmSensor& sensor) {
+            std::lock_guard<std::mutex> lk(m_state.registryMutex);
+            auto& t = m_state.registry.get<TelemetryState>(m_state.ugv);
+            for (size_t i = 0; i < sensor.count; ++i) {
+                const size_t motor = static_cast<size_t>(sensor.sourceId) + i;
+                if (motor >= t.motorRpm.size()) break;
+                t.motorRpm[motor] = static_cast<int>(sensor.rpm[i]);
+                t.motorRpmValid[motor] = true;
+                t.motorRpmLastReceived[motor] = Clock::now();
+            }
+            t.valid = true;
+            t.lastReceived = Clock::now();
         }
     );
 }
@@ -175,6 +209,13 @@ void SerialWorker::loop() {
                         spdlog::warn("SerialWorker: telemetry timeout ({}ms)", msSince);
                     }
                 }
+                for (size_t motor = 0; motor < t.motorRpmValid.size(); ++motor) {
+                    if (t.motorRpmLastReceived[motor] != Clock::time_point{} &&
+                        std::chrono::duration_cast<Ms>(
+                            Clock::now() - t.motorRpmLastReceived[motor]).count() > 1000) {
+                        t.motorRpmValid[motor] = false;
+                    }
+                }
             }
 
             auto rc  = ChannelMapper::mapChannels(ctrl, m_config.channels);
@@ -185,6 +226,7 @@ void SerialWorker::loop() {
             } else if (++m_writeErrors >= static_cast<int>(m_config.control.writeErrorThreshold)) {
                 spdlog::warn("SerialWorker: {} write errors — closing for reconnect", m_writeErrors);
                 m_serial.close();
+                forceSafeState();
                 m_writeErrors   = 0;
                 m_nextReconnect = Clock::now() + Ms(m_config.serial.reconnectDelayMs);
                 std::lock_guard<std::mutex> lk(m_state.registryMutex);

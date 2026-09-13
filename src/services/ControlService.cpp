@@ -10,7 +10,8 @@ static uint16_t mapAxis(float v) {
     return static_cast<uint16_t>(CH_CENTER + c * (CH_CENTER - CH_MIN));
 }
 
-RcChannels mapChannels(const ControlState& ctrl, const AppConfig::ChannelsCfg& ch) {
+RcChannels mapChannels(const ControlState& ctrl,
+                       const AppConfig::ChannelsCfg& ch) {
     RcChannels rc{};
     for (auto& c : rc.ch) c = CH_CENTER;
 
@@ -24,7 +25,6 @@ RcChannels mapChannels(const ControlState& ctrl, const AppConfig::ChannelsCfg& c
     rc.ch[ch.lights - 1] = ctrl.lightsOn ? CH_MAX : CH_MIN;
     rc.ch[ch.arm    - 1] = ctrl.armed    ? CH_MAX : CH_MIN;
     rc.ch[ch.estop  - 1] = ctrl.estop    ? CH_MAX : CH_MIN;
-
     return rc;
 }
 

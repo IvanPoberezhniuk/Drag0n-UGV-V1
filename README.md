@@ -97,7 +97,7 @@ Place `config.json` next to the exe or pass `--config <path>`. All fields are op
 {
   "serial": {
     "port": "auto",
-    "baudrate": 420000
+    "baudrate": 400000
   },
   "control": {
     "rateHz": 50,
@@ -131,6 +131,16 @@ Place `config.json` next to the exe or pass `--config <path>`. All fields are op
 | `Space` | Emergency stop (latches — re-arm to clear) |
 | `L` | Toggle lights |
 | `1` / `2` / `3` | Drive mode |
+
+Keyboard and gamepad controls are accepted only while a window belonging to
+the control station is in the foreground. Switching to another application
+immediately zeros throttle and steering; inputs made there are ignored.
+
+When controlling a RadioMaster Nomad directly through its built-in USB-UART
+without a radio handset, the app sends a one-shot ELRS bind command after every
+serial connection. This starts the stock firmware's RF scheduler; the module
+then returns to normal operation using its saved Binding UID. The motor command
+stream remains disarmed and neutral during this startup.
 
 ---
 

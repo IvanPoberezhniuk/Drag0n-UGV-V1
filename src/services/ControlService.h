@@ -5,7 +5,7 @@
 
 namespace ChannelMapper {
 
-// Maps a ControlState to CRSF RcChannels using the channel mapping from config.
-RcChannels mapChannels(const ControlState& ctrl, const AppConfig::ChannelsCfg& channels);
+RcChannels mapChannels(const ControlState& ctrl,
+                       const AppConfig::ChannelsCfg& channels);
 
 } // namespace ChannelMapper

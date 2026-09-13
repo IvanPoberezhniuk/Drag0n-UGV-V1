@@ -46,3 +46,26 @@ std::array<uint8_t, 26> buildRcChannelsPacket(const RcChannels& channels) {
     pkt[25] = crc8_dvbs2(&pkt[2], 23);
     return pkt;
 }
+
+// A stock ExpressLRS TX only starts its RF scheduler when its primary handset
+// UART connects. The Nomad's built-in USB UART is a secondary CRSF input, so a
+// standalone PC controller has no primary handset to trigger that transition.
+// Entering bind mode briefly starts the scheduler; ExpressLRS exits bind mode
+// automatically and resumes normal operation with the configured Binding UID.
+//
+// Wire format:
+// [sync][len][COMMAND][dest: TX][origin: handset][RX subcmd][BIND][CRC]
+std::array<uint8_t, 8> buildTxBindCommandPacket() {
+    std::array<uint8_t, 8> pkt{
+        CRSF_SYNC,
+        0x06,
+        0x32,
+        0xEE,
+        0xEA,
+        0x10,
+        0x01,
+        0x00
+    };
+    pkt.back() = crc8_dvbs2(&pkt[2], 5);
+    return pkt;
+}

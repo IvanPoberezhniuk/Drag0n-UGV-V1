@@ -4,7 +4,7 @@
 
 struct AppConfig {
     std::string serialPort       = "COM5";
-    uint32_t    baudrate         = 420000;
+    uint32_t    baudrate         = 400000;
     uint32_t    controlRateHz    = 50;
     uint32_t    failsafeTimeoutMs = 300;
     struct {

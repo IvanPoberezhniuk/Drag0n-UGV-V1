@@ -5,7 +5,7 @@
 struct AppConfig {
     struct SerialCfg {
         std::string port             = "auto";
-        uint32_t    baudrate         = 420000;
+        uint32_t    baudrate         = 400000;
         uint32_t    reconnectDelayMs = 2000;
     } serial;
 
