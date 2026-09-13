@@ -1,3 +1,7 @@
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #include "input/InputManager.h"
 #include "core/ControlState.h"
 #include "core/SafetyState.h"
@@ -5,6 +9,15 @@
 #include <mutex>
 #include <algorithm>
 #include <string_view>
+
+static bool appHasForegroundWindow() {
+    const HWND foreground = GetForegroundWindow();
+    if (foreground == nullptr) return false;
+
+    DWORD foregroundProcessId = 0;
+    GetWindowThreadProcessId(foreground, &foregroundProcessId);
+    return foregroundProcessId == GetCurrentProcessId();
+}
 
 void InputManager::addSource(std::unique_ptr<IInputSource> src) {
     m_sources.push_back({ std::move(src), {} });
@@ -24,6 +37,11 @@ void InputManager::poll(AppState& state) {
             entry.lastAxisTime = now;
         frames.push_back(f);
     }
+
+    // Polling keeps each source's edge detectors synchronized, but no keyboard
+    // or gamepad event may affect the vehicle while another app has focus.
+    if (!appHasForegroundWindow())
+        std::fill(frames.begin(), frames.end(), InputFrame{});
 
     // Track most-recently-active source (axes + buttons)
     for (size_t i = 0; i < m_sources.size(); ++i) {

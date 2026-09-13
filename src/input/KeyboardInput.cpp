@@ -33,6 +33,15 @@ static bool isDown(const ActionBinding& b) {
     return vkDown(b.key1) || vkDown(b.key2);
 }
 
+static bool appHasForegroundWindow() {
+    const HWND foreground = GetForegroundWindow();
+    if (foreground == nullptr) return false;
+
+    DWORD foregroundProcessId = 0;
+    GetWindowThreadProcessId(foreground, &foregroundProcessId);
+    return foregroundProcessId == GetCurrentProcessId();
+}
+
 KeyboardInput::KeyboardInput(const KeyBindings& bindings, const AppConfig::InputCfg& cfg)
     : m_bindings(bindings), m_cfg(cfg) {}
 
@@ -47,6 +56,18 @@ InputFrame KeyboardInput::poll() {
     m_lastPoll = now;
 
     const auto& b = m_bindings.actions;
+
+    if (!appHasForegroundWindow()) {
+        // GetAsyncKeyState is global. Keep edge state synchronized while another
+        // application is focused so a key held there cannot fire on refocus.
+        for (size_t i = 0; i < KB::Count; ++i)
+            (void)m_edge.rising(i, isDown(b[i]));
+
+        // Focus loss must stop keyboard motion immediately, without a ramp.
+        m_throttle = 0.0f;
+        m_steering = 0.0f;
+        return f;
+    }
 
     float targetThrottle = 0.0f, targetSteering = 0.0f;
     if (isDown(b[KB::ThrottleForward]))  targetThrottle += 1.0f;
