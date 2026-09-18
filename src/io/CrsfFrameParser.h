@@ -17,16 +17,41 @@ public:
         std::array<int32_t, 6> rpm{};
         size_t count = 0;
     };
+    struct DiagnosticLink {
+        uint32_t controlTxCount = 0;
+        uint16_t controlTxFailCount = 0;
+        uint32_t telemetryRxCount = 0;
+        uint16_t telemetryAgeMs = 0xFFFFu;
+        uint16_t uartCrcErrorCount = 0;
+        uint16_t uartFormatErrorCount = 0;
+        uint8_t safetyState = 0;
+        uint8_t faultMask = 0;
+        uint8_t validMask = 0;
+        uint8_t controlRxCount = 0;
+        uint8_t lastControlFlags = 0;
+        uint8_t lastEnabledMask = 0;
+    };
+    struct Diagnostic {
+        uint8_t flags = 0;
+        uint8_t driveMode = 0;
+        int16_t throttlePerMille = 0;
+        int16_t steeringPerMille = 0;
+        uint32_t crsfChannelFrameCount = 0;
+        uint16_t crsfCrcErrorCount = 0;
+        DiagnosticLink left;
+        DiagnosticLink right;
+    };
 
     using OnLinkStats = std::function<void(const LinkStats&)>;
     using OnBattery   = std::function<void(const BatterySensor&)>;
     using OnRpm       = std::function<void(const RpmSensor&)>;
+    using OnDiagnostic = std::function<void(const Diagnostic&)>;
 
     static constexpr size_t kMaxBufSize = 512;
 
     void feed(const uint8_t* data, int len,
               const OnLinkStats& onLink, const OnBattery& onBattery,
-              const OnRpm& onRpm) {
+              const OnRpm& onRpm, const OnDiagnostic& onDiagnostic) {
         m_buf.insert(m_buf.end(), data, data + len);
 
         while (m_buf.size() >= 4) {
@@ -50,7 +75,8 @@ public:
             uint8_t        type       = m_buf[2];
             const uint8_t* payload    = m_buf.data() + 3;
             size_t         payloadLen = frameLen - 2;
-            dispatch(type, payload, payloadLen, onLink, onBattery, onRpm);
+            dispatch(type, payload, payloadLen, onLink, onBattery, onRpm,
+                     onDiagnostic);
             m_buf.erase(m_buf.begin(), m_buf.begin() + total);
         }
 
@@ -61,6 +87,39 @@ public:
     void clear() { m_buf.clear(); }
 
 private:
+    static uint16_t getU16Le(const uint8_t* value) {
+        return static_cast<uint16_t>(value[0]) |
+               (static_cast<uint16_t>(value[1]) << 8u);
+    }
+
+    static int16_t getI16Le(const uint8_t* value) {
+        return static_cast<int16_t>(getU16Le(value));
+    }
+
+    static uint32_t getU32Le(const uint8_t* value) {
+        return static_cast<uint32_t>(value[0]) |
+               (static_cast<uint32_t>(value[1]) << 8u) |
+               (static_cast<uint32_t>(value[2]) << 16u) |
+               (static_cast<uint32_t>(value[3]) << 24u);
+    }
+
+    static DiagnosticLink decodeDiagnosticLink(const uint8_t* payload) {
+        DiagnosticLink link;
+        link.controlTxCount = getU32Le(&payload[0]);
+        link.controlTxFailCount = getU16Le(&payload[4]);
+        link.telemetryRxCount = getU32Le(&payload[6]);
+        link.telemetryAgeMs = getU16Le(&payload[10]);
+        link.uartCrcErrorCount = getU16Le(&payload[12]);
+        link.uartFormatErrorCount = getU16Le(&payload[14]);
+        link.safetyState = payload[16];
+        link.faultMask = payload[17];
+        link.validMask = payload[18];
+        link.controlRxCount = payload[19];
+        link.lastControlFlags = payload[20];
+        link.lastEnabledMask = payload[21];
+        return link;
+    }
+
     static bool isAddressByte(uint8_t value) {
         // CRSF allows the serial sync byte or a routed device address here.
         return value == CRSF_SYNC || value == 0x00u || value == 0xEAu ||
@@ -69,7 +128,7 @@ private:
 
     void dispatch(uint8_t type, const uint8_t* payload, size_t len,
                   const OnLinkStats& onLink, const OnBattery& onBattery,
-                  const OnRpm& onRpm) {
+                  const OnRpm& onRpm, const OnDiagnostic& onDiagnostic) {
         if (type == CRSF_FRAMETYPE_LINK_STATISTICS && len >= 10) {
             onLink({ payload[0], payload[1], payload[2] });
         } else if (type == CRSF_FRAMETYPE_BATTERY_SENSOR && len >= 8) {
@@ -90,6 +149,19 @@ private:
                 sensor.rpm[i] = static_cast<int32_t>(raw);
             }
             onRpm(sensor);
+        } else if (type == CRSF_FRAMETYPE_UGV_DIAGNOSTIC && len >= 60u &&
+                   payload[0] == 'U' && payload[1] == 'G' &&
+                   payload[2] == 'V' && payload[3] == 2u) {
+            Diagnostic diagnostic;
+            diagnostic.flags = payload[4];
+            diagnostic.driveMode = payload[5];
+            diagnostic.throttlePerMille = getI16Le(&payload[6]);
+            diagnostic.steeringPerMille = getI16Le(&payload[8]);
+            diagnostic.crsfChannelFrameCount = getU32Le(&payload[10]);
+            diagnostic.crsfCrcErrorCount = getU16Le(&payload[14]);
+            diagnostic.left = decodeDiagnosticLink(&payload[16]);
+            diagnostic.right = decodeDiagnosticLink(&payload[38]);
+            onDiagnostic(diagnostic);
         }
     }
 

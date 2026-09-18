@@ -9,6 +9,7 @@
 #include <QSettings>
 #include <QFont>
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include "core/AppState.h"
 #include "core/ControlState.h"
@@ -76,6 +77,12 @@ int main(int argc, char** argv) {
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     consoleSink->set_pattern("[%T.%e] [%^%l%$] %v");
     auto logger = std::make_shared<spdlog::logger>("", consoleSink);
+    const auto logPath = std::filesystem::path(argv[0]).parent_path() /
+                         "ugv-control.log";
+    auto fileSink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
+        logPath.string(), 1024u * 1024u, 3u);
+    fileSink->set_pattern("[%Y-%m-%d %T.%e] [%l] %v");
+    logger->sinks().push_back(fileSink);
     logger->set_level(verbose ? spdlog::level::debug : spdlog::level::info);
     logger->flush_on(spdlog::level::trace);
     spdlog::set_default_logger(logger);

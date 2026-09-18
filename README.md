@@ -63,6 +63,11 @@ cmake --build build_cmake --target clean
 build_cmake\UGVControlStation.exe
 ```
 
+The Logs panel displays live UGV diagnostic telemetry relayed from ESP32
+through XR4 and Nomad. The same entries are persisted beside the executable in
+`build_cmake\ugv-control.log` (1 MB rotating file with three backups), so the
+latest diagnostic session can be shared without screenshots.
+
 ### With a specific config file
 
 ```bash

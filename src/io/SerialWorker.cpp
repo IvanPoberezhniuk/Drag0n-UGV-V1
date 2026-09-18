@@ -13,7 +13,60 @@
 #include "crsf/CrsfPacket.h"
 #include <spdlog/spdlog.h>
 #include "core/ChronoTypes.h"
+#include <iterator>
 #include <thread>
+
+namespace {
+
+const char* safetyStateName(uint8_t state) {
+    static constexpr const char* names[] = {
+        "BOOT", "DISABLED", "ARMING", "READY", "ACTIVE",
+        "DEGRADED", "FAULT", "ESTOP"
+    };
+    return state < std::size(names) ? names[state] : "UNKNOWN";
+}
+
+void logDiagnosticLink(const char* name,
+                       const CrsfFrameParser::DiagnosticLink& link) {
+    const bool missing = link.telemetryAgeMs == 0xFFFFu;
+    const bool unhealthy = missing || link.telemetryAgeMs > 500u ||
+                           link.controlTxFailCount != 0u ||
+                           link.uartCrcErrorCount != 0u ||
+                           link.uartFormatErrorCount != 0u ||
+                           link.faultMask != 0u;
+    if (unhealthy) {
+        if (missing) {
+            spdlog::warn(
+                "{}: TX={} fail={} RX=0 age=NONE state={} faults=0x{:02X} "
+                "valid=0x{:02X} uart_crc={} format={} cmd_rx={} cmd_flags=0x{:02X} cmd_mask=0x{:02X}",
+                name, link.controlTxCount, link.controlTxFailCount,
+                safetyStateName(link.safetyState), link.faultMask,
+                link.validMask, link.uartCrcErrorCount,
+                link.uartFormatErrorCount, link.controlRxCount,
+                link.lastControlFlags, link.lastEnabledMask);
+        } else {
+            spdlog::warn(
+                "{}: TX={} fail={} RX={} age={}ms state={} faults=0x{:02X} "
+                "valid=0x{:02X} uart_crc={} format={} cmd_rx={} cmd_flags=0x{:02X} cmd_mask=0x{:02X}",
+                name, link.controlTxCount, link.controlTxFailCount,
+                link.telemetryRxCount, link.telemetryAgeMs,
+                safetyStateName(link.safetyState), link.faultMask,
+                link.validMask, link.uartCrcErrorCount,
+                link.uartFormatErrorCount, link.controlRxCount,
+                link.lastControlFlags, link.lastEnabledMask);
+        }
+    } else {
+        spdlog::info(
+            "{}: TX={} fail=0 RX={} age={}ms state={} faults=0x00 "
+            "valid=0x{:02X} uart_crc=0 format=0 cmd_rx={} cmd_flags=0x{:02X} cmd_mask=0x{:02X}",
+            name, link.controlTxCount, link.telemetryRxCount,
+            link.telemetryAgeMs, safetyStateName(link.safetyState),
+            link.validMask, link.controlRxCount, link.lastControlFlags,
+            link.lastEnabledMask);
+    }
+}
+
+} // namespace
 
 SerialWorker::SerialWorker(AppState& state, const AppConfig& config)
     : m_state(state), m_config(config) {}
@@ -162,6 +215,22 @@ void SerialWorker::readAndParse() {
             }
             t.valid = true;
             t.lastReceived = Clock::now();
+        },
+        [](const CrsfFrameParser::Diagnostic& diagnostic) {
+            const bool rf = (diagnostic.flags & 0x01u) != 0u;
+            const bool armed = (diagnostic.flags & 0x02u) != 0u;
+            const bool estop = (diagnostic.flags & 0x04u) != 0u;
+            spdlog::info(
+                "UGV: RF={} ARM={} ESTOP={} mode={} throttle={:.1f}% "
+                "steering={:.1f}% CRSF={} crc={}",
+                rf ? "OK" : "LOST", armed ? "ON" : "OFF",
+                estop ? "ON" : "OFF", diagnostic.driveMode,
+                static_cast<double>(diagnostic.throttlePerMille) / 10.0,
+                static_cast<double>(diagnostic.steeringPerMille) / 10.0,
+                diagnostic.crsfChannelFrameCount,
+                diagnostic.crsfCrcErrorCount);
+            logDiagnosticLink("LEFT", diagnostic.left);
+            logDiagnosticLink("RIGHT", diagnostic.right);
         }
     );
 }
