@@ -10,6 +10,10 @@ struct InputFrame {
     bool  estop        = false;
     bool  toggleLights = false;
     int   setDriveMode = 0;      // 0 = no change, 1–3 = set
+
+    bool  toggleCruise    = false;
+    int   cruiseAdjust    = 0;    // +1/-1 = raise/lower cruise speed by 5%, 0 = no change
+    bool  manualOverride  = false; // any drive key (WASD) held -> cancels cruise
 };
 
 class IInputSource {

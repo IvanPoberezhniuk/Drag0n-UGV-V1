@@ -19,21 +19,27 @@ struct KeyBindings {
         DriveMode1       = 7,
         DriveMode2       = 8,
         DriveMode3       = 9,
-        Count            = 10
+        ToggleCruise     = 10,
+        CruiseIncrease   = 11,
+        CruiseDecrease   = 12,
+        Count            = 13
     };
 
     // Qt::Key values: letters/digits match their ASCII / VK codes directly.
-    // Qt::Key_Return = 0x01000004, Qt::Key_Space = 0x20
+    // Qt::Key_Return = 0x01000004, Qt::Key_Up = 0x01000013, Qt::Key_Down = 0x01000015
     std::array<ActionBinding, Count> actions = {{
         { "Throttle Forward",  'W',        0 },
         { "Throttle Backward", 'S',        0 },
         { "Steer Left",        'A',        0 },
         { "Steer Right",       'D',        0 },
         { "Arm / Disarm",      0x01000004, 0 },
-        { "E-Stop",            0x20,       0 },
+        { "E-Stop",            0x01000011, 0 }, // Qt::Key_End
         { "Toggle Lights",     'T',        0 },
         { "Drive Mode 2WD",    '1',        0 },
         { "Drive Mode 4WD",    '2',        0 },
         { "Drive Mode 6WD",    '3',        0 },
+        { "Toggle Cruise",     'C',        0 },
+        { "Cruise +5%",        0x01000013, 0 }, // Qt::Key_Up
+        { "Cruise -5%",        0x01000015, 0 }, // Qt::Key_Down
     }};
 };

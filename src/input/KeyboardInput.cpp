@@ -16,6 +16,7 @@ static int qtKeyToVk(int k) {
         case 0x01000005: return VK_RETURN;
         case 0x01000000: return VK_ESCAPE;
         case 0x01000001: return VK_TAB;
+        case 0x01000011: return VK_END;
         case 0x01000012: return VK_LEFT;
         case 0x01000013: return VK_UP;
         case 0x01000014: return VK_RIGHT;
@@ -69,6 +70,15 @@ InputFrame KeyboardInput::poll() {
         return f;
     }
 
+    // Only a fresh key press cancels cruise -- a WASD key already held when
+    // cruise was engaged (and simply released later) must not cancel it.
+    bool wasdPressed = false;
+    wasdPressed |= m_edge.rising(KB::ThrottleForward,  isDown(b[KB::ThrottleForward]));
+    wasdPressed |= m_edge.rising(KB::ThrottleBackward, isDown(b[KB::ThrottleBackward]));
+    wasdPressed |= m_edge.rising(KB::SteerLeft,        isDown(b[KB::SteerLeft]));
+    wasdPressed |= m_edge.rising(KB::SteerRight,       isDown(b[KB::SteerRight]));
+    f.manualOverride = wasdPressed;
+
     float targetThrottle = 0.0f, targetSteering = 0.0f;
     if (isDown(b[KB::ThrottleForward]))  targetThrottle += 1.0f;
     if (isDown(b[KB::ThrottleBackward])) targetThrottle -= 1.0f;
@@ -94,6 +104,10 @@ InputFrame KeyboardInput::poll() {
     if (m_edge.rising(KB::DriveMode1,   isDown(b[KB::DriveMode1])))   f.setDriveMode = 1;
     if (m_edge.rising(KB::DriveMode2,   isDown(b[KB::DriveMode2])))   f.setDriveMode = 2;
     if (m_edge.rising(KB::DriveMode3,   isDown(b[KB::DriveMode3])))   f.setDriveMode = 3;
+
+    if (m_edge.rising(KB::ToggleCruise,   isDown(b[KB::ToggleCruise])))   f.toggleCruise = true;
+    if (m_edge.rising(KB::CruiseIncrease, isDown(b[KB::CruiseIncrease]))) f.cruiseAdjust = +1;
+    if (m_edge.rising(KB::CruiseDecrease, isDown(b[KB::CruiseDecrease]))) f.cruiseAdjust = -1;
 
     return f;
 }

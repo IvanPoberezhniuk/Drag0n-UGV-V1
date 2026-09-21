@@ -13,7 +13,7 @@ LegendPanel::LegendPanel(AppState& state, QWidget* parent)
     setMinimumWidth(300);
 }
 
-QSize LegendPanel::sizeHint() const { return {320, 580}; }
+QSize LegendPanel::sizeHint() const { return {320, 660}; }
 
 void LegendPanel::refresh() {
     if (m_state.activeInput != m_lastInput) {
@@ -103,10 +103,10 @@ void LegendPanel::drawKeyboard(QPainter& p, int x, int& y) {
     p.drawText(x + 56, y + K/2 + 4, "Arm / Disarm");
     y += K + G + 4;
 
-    drawKey(p, {(qreal)x, (qreal)y, 80, (qreal)K}, "Space");
+    drawKey(p, {(qreal)x, (qreal)y, 52, (qreal)K}, "End");
     p.setPen(QColor(255, 80, 80));
     QFont ef = font(); ef.setBold(true); p.setFont(ef);
-    p.drawText(x + 84, y + K/2 + 4, "E-STOP");
+    p.drawText(x + 56, y + K/2 + 4, "E-STOP");
     y += K + G + 4;
 
     drawKey(p, {(qreal)x, (qreal)y, (qreal)K, (qreal)K}, "L");
@@ -119,6 +119,17 @@ void LegendPanel::drawKeyboard(QPainter& p, int x, int& y) {
     drawKey(p, {(qreal)(x+(K+G)*2), (qreal)y, (qreal)K, (qreal)K}, "3");
     p.setFont(af); p.setPen(kDimText);
     p.drawText(AX, y + K/2 + 4, "Drive mode");
+    y += K + G + 4;
+
+    drawKey(p, {(qreal)x, (qreal)y, (qreal)K, (qreal)K}, "C");
+    p.setFont(af); p.setPen(kDimText);
+    p.drawText(x + K + 8, y + K/2 + 4, "Toggle cruise");
+    y += K + G + 4;
+
+    drawKey(p, {(qreal)x,       (qreal)y, (qreal)K, (qreal)K}, QChar(0x2191)); // Up
+    drawKey(p, {(qreal)(x+K+G), (qreal)y, (qreal)K, (qreal)K}, QChar(0x2193)); // Down
+    p.setFont(af); p.setPen(kDimText);
+    p.drawText(AX, y + K/2 + 4, "Cruise speed +/- 5%");
     y += K + 20;
 }
 

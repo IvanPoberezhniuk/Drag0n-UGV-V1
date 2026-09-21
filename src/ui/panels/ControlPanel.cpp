@@ -17,26 +17,25 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
 {
     auto* layout = new QVBoxLayout(this);
 
-    auto makeBar = [this](const QString& labelText, QProgressBar*& bar, QLabel*& valLabel,
-                          QHBoxLayout* row) {
-        row->addWidget(new QLabel(labelText, this));
+    static constexpr int kBarLabelWidth = 60;
+    auto makeBar = [this](const QString& labelText, QProgressBar*& bar, QHBoxLayout* row) {
+        auto* label = new QLabel(labelText, this);
+        label->setFixedWidth(kBarLabelWidth);
+        row->addWidget(label);
         bar = new QProgressBar(this);
         bar->setRange(-100, 100);
         bar->setValue(0);
         bar->setFormat("%v%");
         bar->setTextVisible(true);
         row->addWidget(bar, 1);
-        valLabel = new QLabel("0.00", this);
-        valLabel->setMinimumWidth(36);
-        row->addWidget(valLabel);
     };
 
     auto* thrRow = new QHBoxLayout;
-    makeBar("Throttle", m_throttleBar, m_throttleLabel, thrRow);
+    makeBar("Throttle", m_throttleBar, thrRow);
     layout->addLayout(thrRow);
 
     auto* strRow = new QHBoxLayout;
-    makeBar("Steering", m_steeringBar, m_steeringLabel, strRow);
+    makeBar("Steering", m_steeringBar, strRow);
     layout->addLayout(strRow);
 
     // Arm + ESTOP
@@ -49,6 +48,9 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
     btnRow->addWidget(m_armBtn);
     btnRow->addWidget(m_estopBtn);
     layout->addLayout(btnRow);
+
+    m_cruiseLabel = new QLabel("Cruise: OFF", this);
+    layout->addWidget(m_cruiseLabel);
 
     m_latchLabel = new QLabel("LATCHED — re-arm to clear", this);
     m_latchLabel->setStyleSheet("color: #ff6600;");
@@ -116,9 +118,7 @@ void ControlPanel::refresh() {
     auto [ctrl, safety] = snapshot<ControlState, SafetyState>(m_state);
 
     m_throttleBar->setValue(static_cast<int>(ctrl.throttle * 100));
-    m_throttleLabel->setText(QString::number(ctrl.throttle, 'f', 2));
     m_steeringBar->setValue(static_cast<int>(ctrl.steering * 100));
-    m_steeringLabel->setText(QString::number(ctrl.steering, 'f', 2));
 
     if (ctrl.armed) {
         m_armBtn->setText("ARMED");
@@ -147,4 +147,12 @@ void ControlPanel::refresh() {
     m_lightsSwitch->blockSignals(true);
     m_lightsSwitch->setChecked(ctrl.lightsOn);
     m_lightsSwitch->blockSignals(false);
+
+    if (ctrl.cruiseEnabled) {
+        m_cruiseLabel->setText(QString("Cruise: ON (%1%)").arg(static_cast<int>(ctrl.cruiseSpeed * 100)));
+        m_cruiseLabel->setStyleSheet("color: #33aaff; font-weight: bold;");
+    } else {
+        m_cruiseLabel->setText(QString("Cruise: OFF (%1%)").arg(static_cast<int>(ctrl.cruiseSpeed * 100)));
+        m_cruiseLabel->setStyleSheet("color: #888888;");
+    }
 }

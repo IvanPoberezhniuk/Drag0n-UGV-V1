@@ -75,20 +75,43 @@ void InputManager::poll(AppState& state) {
 
     // OR all button events
     bool arm = false, disarm = false, estop = false, toggleLights = false;
+    bool toggleCruise = false, manualOverride = false;
     int  setDriveMode = 0;
+    int  cruiseAdjust = 0;
     for (const auto& f : frames) {
-        arm          |= f.arm;
-        disarm       |= f.disarm;
-        estop        |= f.estop;
-        toggleLights |= f.toggleLights;
+        arm            |= f.arm;
+        disarm         |= f.disarm;
+        estop          |= f.estop;
+        toggleLights   |= f.toggleLights;
+        toggleCruise   |= f.toggleCruise;
+        manualOverride |= f.manualOverride;
         if (f.setDriveMode > 0) setDriveMode = f.setDriveMode;
+        if (f.cruiseAdjust != 0) cruiseAdjust = f.cruiseAdjust;
     }
 
     std::lock_guard<std::mutex> lk(state.registryMutex);
     auto& ctrl   = state.registry.get<ControlState>(state.ugv);
     auto& safety = state.registry.get<SafetyState>(state.ugv);
 
-    ctrl.throttle    = throttle;
+    if (manualOverride && ctrl.cruiseEnabled) {
+        ctrl.cruiseEnabled = false;
+        spdlog::info("Input: cruise cancelled by manual drive input");
+    }
+    if (toggleCruise) {
+        ctrl.cruiseEnabled = !ctrl.cruiseEnabled;
+        if (ctrl.cruiseEnabled) {
+            // Capture whatever throttle is being commanded right now (e.g. W
+            // already held) rather than snapping to a fixed/previous speed.
+            ctrl.cruiseSpeed = throttle;
+        }
+        spdlog::info("Input: cruise {}", ctrl.cruiseEnabled ? "ON" : "OFF");
+    }
+    if (cruiseAdjust != 0) {
+        ctrl.cruiseSpeed = std::clamp(ctrl.cruiseSpeed + cruiseAdjust * 0.05f, 0.0f, 1.0f);
+        spdlog::info("Input: cruise speed {:.0f}%", ctrl.cruiseSpeed * 100.0f);
+    }
+
+    ctrl.throttle    = ctrl.cruiseEnabled ? ctrl.cruiseSpeed : throttle;
     ctrl.steering    = steering;
     ctrl.lastUpdated = now;
 
