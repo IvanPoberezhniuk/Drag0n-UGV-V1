@@ -2,5 +2,16 @@
 <RCC version="1.0">
     <qresource prefix="/">
         <file>icon.png</file>
+        <file>icons/cruise.svg</file>
+        <file>icons/estop.svg</file>
+        <file>icons/lights.svg</file>
+        <file>icons/lights-off.svg</file>
+        <file>icons/battery.svg</file>
+        <file>icons/gps.svg</file>
+        <file>icons/velocity.svg</file>
+        <file>icons/speaker.svg</file>
+        <file>icons/camera.svg</file>
+        <file>icons/esp-status.svg</file>
+        <file>icons/stm-status.svg</file>
     </qresource>
 </RCC>

@@ -64,15 +64,15 @@ void CompassBar::paintEvent(QPaintEvent*) {
 
     QFont f = font();
     f.setPointSize(qMax(7, f.pointSize() - 1));
+    f.setBold(true);
     p.setFont(f);
     QFontMetrics fm(f);
 
     QColor tickColor = Theme::textPrimary;
     tickColor.setAlpha(210);
     const int tickBase  = H - 1;
-    const int majorH    = 14;
-    const int mediumH   = 9;
-    const int minorH    = 5;
+    const int majorH    = 14; // labeled ticks (cardinal/degree text) stay taller
+    const int minorH    = 9;  // all unlabeled ticks share this height
     const int labelCy   = (9 + (tickBase - majorH)) / 2;  // midpoint between triangle apex and major tick top
 
     double halfRange = W / (2.0 * kPxPerDeg);
@@ -85,7 +85,7 @@ void CompassBar::paintEvent(QPaintEvent*) {
 
         int dn = ((d % 360) + 360) % 360;
 
-        p.setPen(QPen(tickColor, 1));
+        p.setPen(QPen(tickColor, 2));
 
         if (d % 10 == 0) {
             // Major tick + label
@@ -97,8 +97,6 @@ void CompassBar::paintEvent(QPaintEvent*) {
             int th = fm.height();
             QRect tr(x - tw / 2, labelCy - th / 2, tw, th);
             p.drawText(tr, Qt::AlignCenter, label);
-        } else if (d % 5 == 0) {
-            p.drawLine(x, tickBase - mediumH, x, tickBase);
         } else if (d % 2 == 0) {
             p.drawLine(x, tickBase - minorH, x, tickBase);
         }

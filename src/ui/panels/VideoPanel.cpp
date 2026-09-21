@@ -1,12 +1,20 @@
 #include "ui/panels/VideoPanel.h"
 #include "ui/panels/WheelPanel.h"
 #include "ui/CompassBar.h"
+#include "ui/DashboardBar.h"
 #include "core/TelemetryState.h"
+#include "core/ControlState.h"
+#include "core/SafetyState.h"
 #include <QPainter>
 #include <mutex>
 
 static constexpr int kNoiseW = 480;
 static constexpr int kNoiseH = 360;
+static constexpr int kDashboardH = 44;    // DashboardBar's fixed logical height
+static constexpr int kBottomOverbleed = 4; // extends past the panel's bottom edge so
+                                            // HiDPI/rounding can't leave a seam below
+                                            // it -- Qt clips child widgets to the
+                                            // parent rect, so this is never visible
 
 VideoPanel::VideoPanel(AppState& state, QWidget* parent)
     : IPanel(parent), m_state(state)
@@ -22,6 +30,10 @@ VideoPanel::VideoPanel(AppState& state, QWidget* parent)
     m_compass = new CompassBar(this);
     m_compass->show();
     repositionCompass();
+
+    m_dashboard = new DashboardBar(this);
+    m_dashboard->show();
+    repositionDashboard();
 }
 
 void VideoPanel::generateNoise() {
@@ -47,8 +59,26 @@ void VideoPanel::refresh() {
 
     {
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
-        auto& telem = m_state.registry.get<TelemetryState>(m_state.ugv);
+        auto& telem  = m_state.registry.get<TelemetryState>(m_state.ugv);
+        auto& ctrl   = m_state.registry.get<ControlState>(m_state.ugv);
+        auto& safety = m_state.registry.get<SafetyState>(m_state.ugv);
         m_compass->setHeading(telem.heading, telem.valid);
+        m_dashboard->setCruise(ctrl.cruiseEnabled, ctrl.cruiseSpeed);
+        m_dashboard->setEstop(ctrl.estop || safety.estopLatched);
+        m_dashboard->setLights(ctrl.lightsOn);
+
+        // ESP/STM32 link health: real data, from the CRSF telemetry link
+        // itself and the diagnostic frame's per-node age tracking.
+        m_dashboard->setEspOk(telem.valid);
+        m_dashboard->setStmLeftOk(telem.stmLeftOnline);
+        m_dashboard->setStmRightOk(telem.stmRightOnline);
+
+        // GPS/velocity-sensor/speaker/camera have no telemetry source yet
+        // (hardware not integrated) -- wire these up when that lands.
+        m_dashboard->setGpsOk(false);
+        m_dashboard->setVelocitySensorOk(false);
+        m_dashboard->setSpeakerOk(false);
+        m_dashboard->setCameraStreaming(false);
     }
 
     update();
@@ -86,12 +116,13 @@ void VideoPanel::resizeEvent(QResizeEvent* e) {
     QWidget::resizeEvent(e);
     repositionWheels();
     repositionCompass();
+    repositionDashboard();
 }
 
 void VideoPanel::repositionWheels() {
     if (!m_wheels) return;
     constexpr int margin = 8;
-    m_wheels->move(margin, height() - m_wheels->height() - margin);
+    m_wheels->move(margin, height() - kDashboardH - m_wheels->height() - margin);
     m_wheels->raise();
 }
 
@@ -99,4 +130,15 @@ void VideoPanel::repositionCompass() {
     if (!m_compass) return;
     m_compass->setGeometry(0, 0, width(), 44);
     m_compass->raise();
+}
+
+void VideoPanel::repositionDashboard() {
+    if (!m_dashboard) return;
+    // Overshoot the bottom edge on purpose (see kBottomOverbleed) instead of
+    // sizing exactly to height() -- at fractional HiDPI scale factors, the
+    // two widgets' backing stores can round independently and leave a 1px
+    // seam of VideoPanel's own painted content peeking through below the bar.
+    m_dashboard->setGeometry(0, height() - kDashboardH, width(),
+                             kDashboardH + kBottomOverbleed);
+    m_dashboard->raise();
 }

@@ -9,7 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_definitions(WIN32_LEAN_AND_MEAN NOMINMAX UNICODE)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg)
 
 qt_standard_project_setup()
 
@@ -51,6 +51,8 @@ qt_add_executable(UGVControlStation WIN32
     src/ui/SettingsDialog.h
     src/ui/CompassBar.cpp
     src/ui/CompassBar.h
+    src/ui/DashboardBar.cpp
+    src/ui/DashboardBar.h
     src/ui/widgets/ToggleSwitch.cpp
     src/ui/panels/ConnectionPanel.cpp
     src/ui/panels/ControlPanel.cpp
@@ -78,6 +80,7 @@ target_link_libraries(UGVControlStation PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
+    Qt6::Svg
     spdlog::spdlog
     nlohmann_json::nlohmann_json
     EnTT::EnTT

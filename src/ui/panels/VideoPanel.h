@@ -6,6 +6,7 @@
 
 class WheelPanel;
 class CompassBar;
+class DashboardBar;
 
 class VideoPanel : public IPanel {
     Q_OBJECT
@@ -18,13 +19,15 @@ protected:
     void resizeEvent(QResizeEvent*) override;
 
 private:
-    AppState&    m_state;
-    WheelPanel*  m_wheels  = nullptr;
-    CompassBar*  m_compass = nullptr;
-    QImage       m_noise;
-    std::mt19937 m_rng{ std::random_device{}() };
+    AppState&     m_state;
+    WheelPanel*   m_wheels    = nullptr;
+    CompassBar*   m_compass   = nullptr;
+    DashboardBar* m_dashboard = nullptr;
+    QImage        m_noise;
+    std::mt19937  m_rng{ std::random_device{}() };
 
     void repositionWheels();
     void repositionCompass();
+    void repositionDashboard();
     void generateNoise();
 };

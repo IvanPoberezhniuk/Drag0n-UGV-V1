@@ -216,7 +216,7 @@ void SerialWorker::readAndParse() {
             t.valid = true;
             t.lastReceived = Clock::now();
         },
-        [](const CrsfFrameParser::Diagnostic& diagnostic) {
+        [this](const CrsfFrameParser::Diagnostic& diagnostic) {
             const bool rf = (diagnostic.flags & 0x01u) != 0u;
             const bool armed = (diagnostic.flags & 0x02u) != 0u;
             const bool estop = (diagnostic.flags & 0x04u) != 0u;
@@ -231,6 +231,15 @@ void SerialWorker::readAndParse() {
                 diagnostic.crsfCrcErrorCount);
             logDiagnosticLink("LEFT", diagnostic.left);
             logDiagnosticLink("RIGHT", diagnostic.right);
+
+            auto isOnline = [](const CrsfFrameParser::DiagnosticLink& link) {
+                return link.telemetryAgeMs != 0xFFFFu && link.telemetryAgeMs <= 1000u;
+            };
+            std::lock_guard<std::mutex> lk(m_state.registryMutex);
+            auto& t = m_state.registry.get<TelemetryState>(m_state.ugv);
+            t.stmLeftOnline  = isOnline(diagnostic.left);
+            t.stmRightOnline = isOnline(diagnostic.right);
+            t.diagnosticLastReceived = Clock::now();
         }
     );
 }
@@ -284,6 +293,15 @@ void SerialWorker::loop() {
                             Clock::now() - t.motorRpmLastReceived[motor]).count() > 1000) {
                         t.motorRpmValid[motor] = false;
                     }
+                }
+                if (t.diagnosticLastReceived != Clock::time_point{} &&
+                    std::chrono::duration_cast<Ms>(
+                        Clock::now() - t.diagnosticLastReceived).count() > 3000) {
+                    // Diagnostic frame itself stopped arriving (radio link
+                    // dropped) -- telemetryAgeMs alone would otherwise stay
+                    // frozen at its last known value forever.
+                    t.stmLeftOnline  = false;
+                    t.stmRightOnline = false;
                 }
             }
 

@@ -12,6 +12,8 @@ static const QColor successGreen  {   0, 230,  51 };
 static const QColor warningYellow { 255, 204,   0 };
 static const QColor errorRed      { 255,  68,  68 };
 static const QColor connectedGreen{   0, 200,  80 };
+static const QColor infoBlue      {  64, 156, 255 };
+static const QColor cautionOrange { 255, 140,   0 };
 
 inline QString colorSS(QColor c) { return "color: " + c.name() + ";"; }
 
