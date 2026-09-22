@@ -8,6 +8,7 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QFont>
+#include <QStyleFactory>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -23,6 +24,7 @@
 #include "input/KeyboardInput.h"
 #include "input/XInputGamepad.h"
 #include "ui/MainWindow.h"
+#include "ui/AppStyle.h"
 #include "ui/Theme.h"
 #include "ui/SettingsKeys.h"
 #include <filesystem>
@@ -71,7 +73,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    app.setStyle("Fusion");
+    app.setStyle(new AppStyle(QStyleFactory::create("Fusion")));
     app.setPalette(Theme::darkPalette());
 
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();

@@ -47,6 +47,8 @@ qt_add_executable(UGVControlStation WIN32
     app.rc
     src/main.cpp
     src/ui/MainWindow.cpp
+    src/ui/AppStyle.cpp
+    src/ui/AppStyle.h
     src/ui/SettingsDialog.cpp
     src/ui/SettingsDialog.h
     src/ui/CompassBar.cpp

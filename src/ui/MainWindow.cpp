@@ -55,14 +55,14 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
 
     // Left column: Connection (top) + Control (middle) + Telemetry (bottom)
     m_connDock      = makeDock("", m_connection, Qt::LeftDockWidgetArea);
-    m_controlDock   = makeDock("Control",   m_control,   Qt::LeftDockWidgetArea);
-    m_telemetryDock = makeDock("Telemetry", m_telemetry, Qt::LeftDockWidgetArea);
+    m_controlDock   = makeDock("", m_control,   Qt::LeftDockWidgetArea);
+    m_telemetryDock = makeDock("", m_telemetry, Qt::LeftDockWidgetArea);
     splitDockWidget(m_connDock,    m_controlDock,   Qt::Vertical);
     splitDockWidget(m_controlDock, m_telemetryDock, Qt::Vertical);
 
     // Bottom row: Legend (left) + Logs (right) -- to the right of the left column
-    m_legendDock = makeDock("Legend", m_legend, Qt::BottomDockWidgetArea);
-    m_logsDock   = makeDock("Logs",   m_logs,   Qt::BottomDockWidgetArea);
+    m_legendDock = makeDock("", m_legend, Qt::BottomDockWidgetArea);
+    m_logsDock   = makeDock("", m_logs,   Qt::BottomDockWidgetArea);
     splitDockWidget(m_legendDock, m_logsDock, Qt::Horizontal);
 
     // Left column runs the full window height; bottom row only spans the
@@ -81,6 +81,11 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     connect(prefsAction, &QAction::triggered, this, &MainWindow::openSettings);
 
     auto* viewMenu = menuBar()->addMenu("&View");
+    m_connDock->toggleViewAction()->setText("Connection");
+    m_controlDock->toggleViewAction()->setText("Control");
+    m_telemetryDock->toggleViewAction()->setText("Telemetry");
+    m_legendDock->toggleViewAction()->setText("Legend");
+    m_logsDock->toggleViewAction()->setText("Logs");
     viewMenu->addAction(m_connDock->toggleViewAction());
     viewMenu->addAction(m_controlDock->toggleViewAction());
     viewMenu->addAction(m_telemetryDock->toggleViewAction());

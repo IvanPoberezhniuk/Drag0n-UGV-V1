@@ -17,5 +17,7 @@
         <file>icons/plug-connected.svg</file>
         <file>icons/plug-off.svg</file>
         <file>icons/info-circle.svg</file>
+        <file>icons/x.svg</file>
+        <file>icons/square.svg</file>
     </qresource>
 </RCC>
