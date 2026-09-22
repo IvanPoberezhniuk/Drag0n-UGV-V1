@@ -10,6 +10,13 @@ static const QColor kKeyBorder{110, 110, 110};
 static const QColor kKeyText  = Theme::textPrimary;
 static const QColor kDimText  = Theme::textDim;
 
+// Xbox controller face-button/stick colors (brand-matched, not theme-shared).
+static const QColor kStickGray  { 65,  65,  65};
+static const QColor kButtonAGreen{ 20, 160,  50};
+static const QColor kButtonBRed { 190,  30,  30};
+static const QColor kButtonYYellow{190, 150,   0};
+static const QColor kButtonXBlue{ 20,  80, 200};
+
 static constexpr int kColumnGap = 28;
 static constexpr int kMargin    = 14;
 static constexpr int kTopMargin = 20;
@@ -167,32 +174,32 @@ std::vector<LegendPanel::Entry> LegendPanel::buildControllerEntries(int K, int G
     }});
 
     entries.push_back({K + G + 4, [this, K](QPainter& p, int x, int y) {
-        drawCircularKey(p, x, y, K, "LS", QColor(65, 65, 65));
+        drawCircularKey(p, x, y, K, "LS", kStickGray);
         p.setPen(kDimText);
         p.drawText(x + K + 8, y + K/2 + 4, "Steer left / right");
     }});
 
     entries.push_back({K + G + 4, [this, K, AX](QPainter& p, int x, int y) {
-        drawCircularKey(p, x, y, K, "A", QColor(20, 160, 50));
+        drawCircularKey(p, x, y, K, "A", kButtonAGreen);
         p.setPen(kDimText);
         p.drawText(x + AX, y + K/2 + 4, "Arm / Disarm");
     }});
 
     entries.push_back({K + G + 4, [this, K, AX](QPainter& p, int x, int y) {
-        drawCircularKey(p, x, y, K, "B", QColor(190, 30, 30));
+        drawCircularKey(p, x, y, K, "B", kButtonBRed);
         QFont ef = p.font(); ef.setBold(true); p.setFont(ef);
         p.setPen(Theme::errorRed);
         p.drawText(x + AX, y + K/2 + 4, "E-STOP");
     }});
 
     entries.push_back({K + G + 4, [this, K, AX](QPainter& p, int x, int y) {
-        drawCircularKey(p, x, y, K, "Y", QColor(190, 150, 0));
+        drawCircularKey(p, x, y, K, "Y", kButtonYYellow);
         p.setPen(kDimText);
         p.drawText(x + AX, y + K/2 + 4, "Lights toggle");
     }});
 
     entries.push_back({K + 20, [this, K, AX](QPainter& p, int x, int y) {
-        drawCircularKey(p, x, y, K, "X", QColor(20, 80, 200));
+        drawCircularKey(p, x, y, K, "X", kButtonXBlue);
         p.setPen(kDimText);
         p.drawText(x + AX, y + K/2 + 4, "Drive mode cycle");
     }});
@@ -207,7 +214,7 @@ void LegendPanel::paintEvent(QPaintEvent*) {
     p.setRenderHint(QPainter::Antialiasing);
     p.setRenderHint(QPainter::TextAntialiasing);
 
-    p.fillRect(rect(), QColor(38, 38, 38));
+    p.fillRect(rect(), Theme::tooltipBg);
 
     const int K = fontMetrics().height() + 12;  // key size scales with font
     const int G = 3;

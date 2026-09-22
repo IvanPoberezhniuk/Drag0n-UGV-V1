@@ -6,3 +6,6 @@ build_mingw/
 
 # MacOS Cache
 .DS_Store
+
+# clangd index cache
+/.cache/

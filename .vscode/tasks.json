@@ -7,7 +7,7 @@
       "command": "C:\\Program Files\\CMake\\bin\\cmake.exe",
       "args": [
         "-G", "Ninja",
-        "-B", "build_cmake",
+        "-B", "build",
         "-DCMAKE_PREFIX_PATH=C:/msys64/ucrt64",
         "-DCMAKE_CXX_COMPILER=C:/msys64/ucrt64/bin/g++.exe",
         "-DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe",
@@ -26,7 +26,7 @@
       "label": "cmake: build",
       "type": "shell",
       "command": "C:\\Program Files\\CMake\\bin\\cmake.exe",
-      "args": ["--build", "build_cmake"],
+      "args": ["--build", "build"],
       "options": {
         "env": {
           "PATH": "C:\\msys64\\ucrt64\\bin;${env:PATH}"

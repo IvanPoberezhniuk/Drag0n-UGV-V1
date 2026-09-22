@@ -6,7 +6,7 @@ static constexpr int kBlinkPeriodMs = 1600;
 
 LiveDot::LiveDot(QWidget* parent) : QWidget(parent) {
     setFixedSize(sizeHint());
-    m_timer.setInterval(33); // ~30fps, only runs while active
+    m_timer.setInterval(Theme::kUiRefreshMs); // only runs while active
     connect(&m_timer, &QTimer::timeout, this, [this]() { update(); });
 }
 

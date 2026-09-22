@@ -6,6 +6,9 @@ static constexpr int kTrackW = 40;
 static constexpr int kTrackH = 20;
 static constexpr int kThumb  = 14;
 
+static const QColor kTrackOff{ 80,  80,  80};
+static const QColor kThumbColor{220, 220, 220};
+
 ToggleSwitch::ToggleSwitch(const QString& label, QWidget* parent)
     : QAbstractButton(parent), m_label(label)
 {
@@ -26,14 +29,14 @@ void ToggleSwitch::paintEvent(QPaintEvent*) {
     bool on = isChecked();
     int  r  = kTrackH / 2;
 
-    QColor track = on ? Theme::accent : QColor(80, 80, 80);
+    QColor track = on ? Theme::accent : kTrackOff;
     p.setPen(Qt::NoPen);
     p.setBrush(track);
     p.drawRoundedRect(QRectF(0, (height() - kTrackH) / 2.0, kTrackW, kTrackH), r, r);
 
     int thumbX = on ? kTrackW - kThumb - 3 : 3;
     int thumbY = (height() - kThumb) / 2;
-    p.setBrush(QColor(220, 220, 220));
+    p.setBrush(kThumbColor);
     p.drawEllipse(thumbX, thumbY, kThumb, kThumb);
 
     if (!m_label.isEmpty()) {
