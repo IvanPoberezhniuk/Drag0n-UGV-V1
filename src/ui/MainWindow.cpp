@@ -52,10 +52,16 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
         dock->setAllowedAreas(Qt::AllDockWidgetAreas);
         addDockWidget(area, dock);
         // Title bar float/close buttons are QAbstractButtons parented directly
-        // on the dock (not on its content widget) -- give them a pointer
-        // cursor so they read as clickable like the rest of the app's icons.
-        for (auto* btn : dock->findChildren<QAbstractButton*>(QString(), Qt::FindDirectChildrenOnly))
+        // on the dock (not on its content widget). Qt's private title bar
+        // layout keeps their sizeHint width but clamps height to the title
+        // bar's available space, rendering them (and their hover highlight)
+        // as a wide rectangle -- force a fixed square so resize() clamps any
+        // later setGeometry() call regardless of that layout's own math.
+        // Also give them a pointer cursor so they read as clickable.
+        for (auto* btn : dock->findChildren<QAbstractButton*>(QString(), Qt::FindDirectChildrenOnly)) {
+            btn->setFixedSize(20, 20);
             btn->setCursor(Qt::PointingHandCursor);
+        }
         return dock;
     };
 
