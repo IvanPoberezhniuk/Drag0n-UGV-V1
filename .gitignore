@@ -2,6 +2,7 @@
 /build/
 build_cmake/
 build_verify/
+build_mingw/
 
 # MacOS Cache
 .DS_Store
