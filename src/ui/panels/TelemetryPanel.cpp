@@ -105,10 +105,17 @@ TelemetryPanel::TelemetryPanel(AppState& state, QWidget* parent)
     bmsLayout->addWidget(bmsPackGroup);
     bmsLayout->addWidget(bmsCellsGroup);
 
-    auto* navigationGroup = new QGroupBox("Navigation", m_dataWidget);
+    auto* navigationGroup = new QGroupBox(m_dataWidget);
     auto* navigationLayout = new QFormLayout(navigationGroup);
     navigationLayout->setRowWrapPolicy(QFormLayout::DontWrapRows);
     navigationLayout->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+
+    auto* navTitleLabel = new QLabel("Navigation", navigationGroup);
+    QFont navTitleFont = navTitleLabel->font();
+    navTitleFont.setBold(true);
+    navTitleLabel->setFont(navTitleFont);
+    navigationLayout->addRow(navTitleLabel);
+
     m_speedLabel   = new QLabel("—", this);
     m_headingLabel = new QLabel("—", this);
     for (QLabel* valueLabel : {m_speedLabel, m_headingLabel}) {
