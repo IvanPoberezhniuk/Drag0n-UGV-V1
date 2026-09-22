@@ -1,11 +1,13 @@
 #include "ui/panels/LogsPanel.h"
 #include "core/LogBuffer.h"
 #include "ui/Theme.h"
+#include "ui/widgets/CheckableComboBox.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QCheckBox>
 #include <QTextEdit>
 #include <QPushButton>
+#include <QIcon>
 #include <QFont>
 #include <QScrollBar>
 #include <spdlog/spdlog.h>
@@ -41,19 +43,22 @@ LogsPanel::LogsPanel(AppState& state, QWidget* parent)
     auto* layout = new QVBoxLayout(this);
 
     auto* toolbar = new QHBoxLayout;
-    m_showDebug  = new QCheckBox("DEBUG", this); m_showDebug->setChecked(true);
-    m_showInfo   = new QCheckBox("INFO",  this); m_showInfo->setChecked(true);
-    m_showWarn   = new QCheckBox("WARN",  this); m_showWarn->setChecked(true);
-    m_showError  = new QCheckBox("ERROR", this); m_showError->setChecked(true);
+    m_levelFilter = new CheckableComboBox(this);
+    m_levelFilter->setTitleText("Levels");
+    m_levelFilter->addCheckableItem("DEBUG");
+    m_levelFilter->addCheckableItem("INFO");
+    m_levelFilter->addCheckableItem("WARN");
+    m_levelFilter->addCheckableItem("ERROR");
+    m_levelFilter->setMinimumWidth(90);
     m_autoScroll = new QCheckBox("Auto-scroll", this); m_autoScroll->setChecked(true);
-    auto* clearBtn = new QPushButton("Clear", this);
-    toolbar->addWidget(m_showDebug);
-    toolbar->addWidget(m_showInfo);
-    toolbar->addWidget(m_showWarn);
-    toolbar->addWidget(m_showError);
+    auto* clearBtn = new QPushButton(this);
+    clearBtn->setIcon(QIcon(":/icons/trash.svg"));
+    clearBtn->setToolTip("Clear logs");
+    clearBtn->setFixedSize(30, 26);
+    toolbar->addWidget(m_levelFilter);
     toolbar->addWidget(m_autoScroll);
-    toolbar->addWidget(clearBtn);
     toolbar->addStretch();
+    toolbar->addWidget(clearBtn);
     layout->addLayout(toolbar);
 
     m_textEdit = new QTextEdit(this);
@@ -74,10 +79,7 @@ LogsPanel::LogsPanel(AppState& state, QWidget* parent)
         m_lastSize = 0;
         refresh();
     };
-    connect(m_showDebug, &QCheckBox::toggled, this, refilter);
-    connect(m_showInfo,  &QCheckBox::toggled, this, refilter);
-    connect(m_showWarn,  &QCheckBox::toggled, this, refilter);
-    connect(m_showError, &QCheckBox::toggled, this, refilter);
+    connect(m_levelFilter, &CheckableComboBox::checkedChanged, this, refilter);
 }
 
 void LogsPanel::refresh() {
@@ -86,10 +88,10 @@ void LogsPanel::refresh() {
 
     if (newSize == m_lastSize) return;
 
-    bool debug = m_showDebug->isChecked();
-    bool info  = m_showInfo->isChecked();
-    bool warn  = m_showWarn->isChecked();
-    bool error = m_showError->isChecked();
+    bool debug = m_levelFilter->isChecked(0);
+    bool info  = m_levelFilter->isChecked(1);
+    bool warn  = m_levelFilter->isChecked(2);
+    bool error = m_levelFilter->isChecked(3);
 
     if (newSize < m_lastSize) {
         m_textEdit->clear();

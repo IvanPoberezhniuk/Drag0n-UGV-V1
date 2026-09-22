@@ -1,5 +1,6 @@
 #include "ui/SettingsDialog.h"
 #include "ui/SettingsKeys.h"
+#include "ui/Theme.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QListWidget>
@@ -19,6 +20,17 @@
 #include <QKeyEvent>
 #include <QMessageBox>
 #include <QKeySequence>
+#include <QComboBox>
+#include <QCheckBox>
+#include <QIntValidator>
+
+static const QColor kSidebarBg        {  42,  42,  42 };
+static const QColor kSidebarBorder    {  68,  68,  68 };
+static const QColor kSidebarItemText  { 204, 204, 204 };
+static const QColor kSidebarSelectedBg{  58,  58,  58 };
+static const QColor kPreviewBg        {  30,  30,  30 };
+static const QColor kPreviewText      { 224, 224, 224 };
+static const QColor kUnsetKeyColor    {  80,  80,  80 };
 
 // ── Key capture dialog ────────────────────────────────────────────────────────
 class KeyCaptureDialog : public QDialog {
@@ -55,8 +67,10 @@ SettingsDialog::SettingsDialog(AppState& state, QWidget* parent)
     , m_appState(state)
     , m_originalFont(qApp->font())
     , m_originalWheelSize(state.wheelSizePercent.load())
+    , m_originalWhiteNoise(state.whiteNoiseEnabled.load())
     , m_editedBindings(state.keyBindings)
     , m_originalBindings(state.keyBindings)
+    , m_originalBaudrate(state.serialBaudrate)
 {
     setWindowTitle("Preferences");
     setMinimumSize(1120, 840);
@@ -65,18 +79,22 @@ SettingsDialog::SettingsDialog(AppState& state, QWidget* parent)
     m_sidebar = new QListWidget(this);
     m_sidebar->setFixedWidth(120);
     m_sidebar->setFrameShape(QFrame::NoFrame);
-    m_sidebar->setStyleSheet(
-        "QListWidget { background: #2a2a2a; border-right: 1px solid #444; }"
-        "QListWidget::item { padding: 10px 12px; color: #ccc; }"
-        "QListWidget::item:selected { background: #3a3a3a; color: white; "
-        "  border-left: 3px solid #00c850; }");
+    m_sidebar->setStyleSheet(QString(
+        "QListWidget { background: %1; border-right: 1px solid %2; }"
+        "QListWidget::item { padding: 10px 12px; color: %3; }"
+        "QListWidget::item:selected { background: %4; color: white; "
+        "  border-left: 3px solid %5; }")
+        .arg(kSidebarBg.name(), kSidebarBorder.name(), kSidebarItemText.name(),
+             kSidebarSelectedBg.name(), Theme::accent.name()));
     m_sidebar->addItem("UI");
     m_sidebar->addItem("Controls");
+    m_sidebar->addItem("Connection");
     m_sidebar->setCurrentRow(0);
 
     m_stack = new QStackedWidget(this);
     m_stack->addWidget(buildUiPage());
     m_stack->addWidget(buildControlsPage());
+    m_stack->addWidget(buildConnectionPage());
 
     connect(m_sidebar, &QListWidget::currentRowChanged,
             m_stack,   &QStackedWidget::setCurrentIndex);
@@ -103,7 +121,7 @@ SettingsDialog::SettingsDialog(AppState& state, QWidget* parent)
 
     auto* sep = new QFrame(this);
     sep->setFrameShape(QFrame::HLine);
-    sep->setStyleSheet("color: #444;");
+    sep->setStyleSheet(Theme::colorSS(kSidebarBorder));
     root->addWidget(sep);
 
     auto* btnRow = new QHBoxLayout;
@@ -150,6 +168,10 @@ QWidget* SettingsDialog::buildUiPage() {
     wheelRow->addWidget(m_wheelSize);
     form->addRow("Wheel diagram:", wheelRow);
 
+    m_whiteNoise = new QCheckBox("Show static when camera is offline", page);
+    m_whiteNoise->setChecked(m_originalWhiteNoise);
+    form->addRow("White noise:", m_whiteNoise);
+
     layout->addLayout(form);
 
     auto* previewLabel = new QLabel("Font preview:", page);
@@ -160,7 +182,8 @@ QWidget* SettingsDialog::buildUiPage() {
     m_preview->setFrameShape(QFrame::StyledPanel);
     m_preview->setWordWrap(true);
     m_preview->setMinimumHeight(60);
-    m_preview->setStyleSheet("background: #1e1e1e; padding: 8px; color: #e0e0e0;");
+    m_preview->setStyleSheet(QString("background: %1; padding: 8px; color: %2;")
+        .arg(kPreviewBg.name(), kPreviewText.name()));
     layout->addWidget(m_preview);
 
     layout->addStretch();
@@ -188,7 +211,7 @@ QWidget* SettingsDialog::buildControlsPage() {
     layout->setSpacing(10);
 
     auto* hint = new QLabel("Click Key 1 or Key 2 to reassign.", page);
-    hint->setStyleSheet("color: #888;");
+    hint->setStyleSheet(Theme::colorSS(Theme::textMuted));
     layout->addWidget(hint);
 
     m_bindingsTable = new QTableWidget(KeyBindings::Count, 3, page);
@@ -265,6 +288,38 @@ QWidget* SettingsDialog::buildControlsPage() {
     return page;
 }
 
+QWidget* SettingsDialog::buildConnectionPage() {
+    auto* page   = new QWidget(this);
+    auto* layout = new QVBoxLayout(page);
+    layout->setContentsMargins(20, 20, 20, 20);
+    layout->setSpacing(12);
+
+    auto* form = new QFormLayout;
+    form->setSpacing(10);
+
+    m_baudCombo = new QComboBox(page);
+    m_baudCombo->setEditable(true);
+    m_baudCombo->setValidator(new QIntValidator(1, 10000000, m_baudCombo));
+    m_baudCombo->addItems({"9600", "19200", "38400", "57600", "115200",
+                           "230400", "250000", "400000", "460800", "500000",
+                           "921600", "1000000"});
+    m_baudCombo->setCurrentText(QString::number(m_originalBaudrate));
+    m_baudCombo->setFixedWidth(140);
+    form->addRow("Baud rate:", m_baudCombo);
+
+    layout->addLayout(form);
+
+    auto* hint = new QLabel(
+        "Must match the ESP32 firmware's UART baud rate. Applies the next "
+        "time you connect.", page);
+    hint->setStyleSheet(Theme::colorSS(Theme::textMuted));
+    hint->setWordWrap(true);
+    layout->addWidget(hint);
+
+    layout->addStretch();
+    return page;
+}
+
 void SettingsDialog::populateBindingsTable() {
     m_bindingsTable->blockSignals(true);
     for (int i = 0; i < KeyBindings::Count; ++i) {
@@ -279,7 +334,7 @@ void SettingsDialog::populateBindingsTable() {
             item->setTextAlignment(Qt::AlignCenter);
             item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
             if (k == 0)
-                item->setForeground(QColor(80, 80, 80));
+                item->setForeground(kUnsetKeyColor);
             return item;
         };
         m_bindingsTable->setItem(i, 1, makeKeyItem(act.key1));
@@ -304,13 +359,23 @@ void SettingsDialog::onApply() {
     int wheelPct = m_wheelSize->value();
     m_appState.wheelSizePercent.store(wheelPct);
 
+    // Offline video background
+    const bool whiteNoise = m_whiteNoise->isChecked();
+    m_appState.whiteNoiseEnabled.store(whiteNoise);
+
     // Key bindings — write to app state and persist
     m_appState.keyBindings = m_editedBindings;
+
+    // Baud rate
+    uint32_t baud = m_baudCombo->currentText().toUInt();
+    if (baud > 0) m_appState.serialBaudrate = baud;
 
     QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
     s.setValue(SettingsKeys::kFontFamily, f.family());
     s.setValue(SettingsKeys::kFontSize,   f.pointSize());
     s.setValue(SettingsKeys::kWheelSize,  wheelPct);
+    s.setValue(SettingsKeys::kWhiteNoise, whiteNoise);
+    s.setValue(SettingsKeys::kBaudRate,   m_appState.serialBaudrate);
     for (int i = 0; i < KeyBindings::Count; ++i) {
         s.setValue(QString(SettingsKeys::kBindKey1Fmt).arg(i), m_editedBindings.actions[i].key1);
         s.setValue(QString(SettingsKeys::kBindKey2Fmt).arg(i), m_editedBindings.actions[i].key2);
@@ -325,6 +390,8 @@ void SettingsDialog::onOk() {
 void SettingsDialog::onCancel() {
     qApp->setFont(m_originalFont);
     m_appState.wheelSizePercent.store(m_originalWheelSize);
+    m_appState.whiteNoiseEnabled.store(m_originalWhiteNoise);
     m_appState.keyBindings = m_originalBindings;
+    m_appState.serialBaudrate = m_originalBaudrate;
     reject();
 }

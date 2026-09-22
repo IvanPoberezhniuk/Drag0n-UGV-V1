@@ -44,11 +44,13 @@ void CompassBar::paintEvent(QPaintEvent*) {
 
     // Semi-transparent background strip
     p.setPen(Qt::NoPen);
-    p.setBrush(QColor(0, 0, 0, 130));
+    p.setBrush(Theme::hudStripBackground);
     p.drawRect(0, 0, W, H);
 
     // Center marker: downward triangle at top-center
-    p.setBrush(QColor(255, 255, 255, 220));
+    QColor markerColor = Theme::accent;
+    markerColor.setAlpha(220);
+    p.setBrush(markerColor);
     QPolygon tri;
     tri << QPoint(cx - 5, 0) << QPoint(cx + 5, 0) << QPoint(cx, 9);
     p.drawPolygon(tri);
@@ -57,7 +59,7 @@ void CompassBar::paintEvent(QPaintEvent*) {
         QFont f = font();
         f.setBold(true);
         p.setFont(f);
-        p.setPen(QColor(120, 120, 120));
+        p.setPen(Theme::textMuted);
         p.drawText(rect(), Qt::AlignCenter, "---");
         return;
     }

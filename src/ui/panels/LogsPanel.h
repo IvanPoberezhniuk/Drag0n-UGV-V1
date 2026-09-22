@@ -5,6 +5,7 @@
 
 class QCheckBox;
 class QTextEdit;
+class CheckableComboBox;
 
 class LogsPanel : public IPanel {
 public:
@@ -14,10 +15,9 @@ public:
 private:
     AppState& m_state;
 
-    QCheckBox* m_showDebug  = nullptr;
-    QCheckBox* m_showInfo   = nullptr;
-    QCheckBox* m_showWarn   = nullptr;
-    QCheckBox* m_showError  = nullptr;
+    // Level filter: DEBUG/INFO/WARN/ERROR checkboxes collapsed under a
+    // single checkable dropdown instead of 4 separate widgets.
+    CheckableComboBox* m_levelFilter = nullptr;
     QCheckBox* m_autoScroll = nullptr;
     QTextEdit* m_textEdit   = nullptr;
     size_t     m_lastSize   = 0;

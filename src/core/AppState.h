@@ -23,7 +23,14 @@ struct AppState {
 
     InputType          activeInput      = InputType::Keyboard;
     std::atomic<int>   wheelSizePercent {100};
+    std::atomic<bool>  whiteNoiseEnabled {true};
     LogBuffer logs;
 
     KeyBindings keyBindings;
+
+    // Serial baud rate: hardcoded to config.json's default unless the user
+    // overrides it in Settings > Connection, following the same
+    // read-on-UI-thread / edited-in-SettingsDialog convention as
+    // keyBindings above.
+    uint32_t serialBaudrate = 400000;
 };

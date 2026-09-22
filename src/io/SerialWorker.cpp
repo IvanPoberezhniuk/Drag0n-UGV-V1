@@ -11,20 +11,13 @@
 #include "services/SafetyService.h"
 #include "services/ControlService.h"
 #include "crsf/CrsfPacket.h"
+#include "core/SafetyStateName.h"
 #include <spdlog/spdlog.h>
 #include "core/ChronoTypes.h"
 #include <iterator>
 #include <thread>
 
 namespace {
-
-const char* safetyStateName(uint8_t state) {
-    static constexpr const char* names[] = {
-        "BOOT", "DISABLED", "ARMING", "READY", "ACTIVE",
-        "DEGRADED", "FAULT", "ESTOP"
-    };
-    return state < std::size(names) ? names[state] : "UNKNOWN";
-}
 
 void logDiagnosticLink(const char* name,
                        const CrsfFrameParser::DiagnosticLink& link) {
@@ -239,7 +232,49 @@ void SerialWorker::readAndParse() {
             auto& t = m_state.registry.get<TelemetryState>(m_state.ugv);
             t.stmLeftOnline  = isOnline(diagnostic.left);
             t.stmRightOnline = isOnline(diagnostic.right);
+            t.stmLeftState      = diagnostic.left.safetyState;
+            t.stmRightState     = diagnostic.right.safetyState;
+            t.stmLeftFaultMask  = diagnostic.left.faultMask;
+            t.stmRightFaultMask = diagnostic.right.faultMask;
+            t.stmLeftAgeMs      = diagnostic.left.telemetryAgeMs;
+            t.stmRightAgeMs     = diagnostic.right.telemetryAgeMs;
+            t.stmLeftUptimeMs        = diagnostic.left.uptimeMs;
+            t.stmRightUptimeMs       = diagnostic.right.uptimeMs;
+            t.stmLeftStackFreeBytes  = diagnostic.left.stackFreeBytes;
+            t.stmRightStackFreeBytes = diagnostic.right.stackFreeBytes;
+            t.espUptimeMs      = diagnostic.espUptimeMs;
+            t.espFreeHeapBytes = diagnostic.espFreeHeapBytes;
             t.diagnosticLastReceived = Clock::now();
+        },
+        [this](const CrsfFrameParser::BmsTelemetry& bms) {
+            const bool connected = (bms.flags & 0x01u) != 0u;
+            const bool valid = (bms.flags & 0x02u) != 0u;
+            spdlog::info("BMS: connected={} valid={} soc={}% age={}ms",
+                         connected, valid, bms.socPct, bms.frameAgeMs);
+            std::lock_guard<std::mutex> lk(m_state.registryMutex);
+            auto& t = m_state.registry.get<TelemetryState>(m_state.ugv);
+            t.bmsConnected = connected;
+            t.bmsValid = valid;
+            t.batteryVoltage = bms.packVoltage;
+            t.batteryCurrent = bms.packCurrent;
+            t.batterySocPct = bms.socPct;
+            t.batteryRemainingAh = bms.remainingCapacity;
+            t.batteryFullAh = bms.fullCapacity;
+            t.batteryCycleCount = bms.cycleCount;
+            t.batteryCellMinMv = bms.cellMvMin;
+            t.batteryCellMaxMv = bms.cellMvMax;
+            t.batteryCellDeltaMv = bms.cellMvDelta;
+            t.batteryCellMv = bms.cellMv;
+            t.batteryCharging = bms.chargingEnabled;
+            t.batteryDischarging = bms.dischargingEnabled;
+            t.batteryChargerPlugged = bms.chargerPlugged;
+            t.batteryBalancerStatus = bms.balancerStatus;
+            t.batteryTempLowC = bms.tempLowC;
+            t.batteryTempHighC = bms.tempHighC;
+            t.batteryAlarmBits = bms.alarmBits;
+            t.bmsLastReceived = Clock::now();
+            t.valid = true;
+            t.lastReceived = Clock::now();
         }
     );
 }
@@ -296,12 +331,24 @@ void SerialWorker::loop() {
                 }
                 if (t.diagnosticLastReceived != Clock::time_point{} &&
                     std::chrono::duration_cast<Ms>(
-                        Clock::now() - t.diagnosticLastReceived).count() > 3000) {
+                        Clock::now() - t.diagnosticLastReceived).count() > 6000) {
                     // Diagnostic frame itself stopped arriving (radio link
                     // dropped) -- telemetryAgeMs alone would otherwise stay
-                    // frozen at its last known value forever.
+                    // frozen at its last known value forever. Threshold is
+                    // 6s, not the firmware's nominal 1000ms send period --
+                    // bench logs show real inter-arrival gaps of 3-4s (CRSF
+                    // frame contention with the RPM/diagnostic frames
+                    // sharing the link), so a tight 3000ms threshold was
+                    // firing every cycle and made the STM status icons
+                    // flicker green/red/green on every log line.
                     t.stmLeftOnline  = false;
                     t.stmRightOnline = false;
+                }
+                if (t.bmsLastReceived != Clock::time_point{} &&
+                    std::chrono::duration_cast<Ms>(
+                        Clock::now() - t.bmsLastReceived).count() > 6000) {
+                    t.bmsConnected = false;
+                    t.bmsValid = false;
                 }
             }
 

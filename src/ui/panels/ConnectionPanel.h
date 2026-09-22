@@ -5,9 +5,10 @@
 #include "io/SerialWorker.h"
 
 class QComboBox;
-class QLineEdit;
 class QPushButton;
 class QLabel;
+class HoverInfoIcon;
+class LiveDot;
 
 class ConnectionPanel : public IPanel {
 public:
@@ -17,16 +18,14 @@ public:
 
 private:
     void onConnectClicked();
-    void onRefreshClicked();
+    void refreshPortList();
 
     AppState&     m_state;
     SerialWorker& m_worker;
 
-    QLabel*      m_statusLabel  = nullptr;
-    QComboBox*   m_portCombo    = nullptr;
-    QLineEdit*   m_baudEdit     = nullptr;
-    QPushButton* m_connectBtn   = nullptr;
-    QLabel*      m_portInfoLabel = nullptr;
-    QLabel*      m_baudInfoLabel = nullptr;
-    QLabel*      m_pktLabel     = nullptr;
+    QLabel*        m_statusLabel = nullptr;
+    LiveDot*       m_statusDot   = nullptr;
+    QComboBox*     m_portCombo   = nullptr;
+    QPushButton*   m_connectBtn  = nullptr;
+    HoverInfoIcon* m_infoIcon    = nullptr;
 };

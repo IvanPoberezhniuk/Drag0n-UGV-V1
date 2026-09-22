@@ -105,19 +105,22 @@ int main(int argc, char** argv) {
     {
         QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
         state.wheelSizePercent.store(s.value(SettingsKeys::kWheelSize, 100).toInt());
+        state.whiteNoiseEnabled.store(
+            s.value(SettingsKeys::kWhiteNoise, true).toBool());
         for (int i = 0; i < KeyBindings::Count; ++i) {
             auto k1 = QString(SettingsKeys::kBindKey1Fmt).arg(i);
             auto k2 = QString(SettingsKeys::kBindKey2Fmt).arg(i);
             if (s.contains(k1)) state.keyBindings.actions[i].key1 = s.value(k1).toInt();
             if (s.contains(k2)) state.keyBindings.actions[i].key2 = s.value(k2).toInt();
         }
+        state.serialBaudrate = s.value(SettingsKeys::kBaudRate, config.serial.baudrate).toUInt();
     }
     state.ugv = state.registry.create();
     state.registry.emplace<ControlState>(state.ugv);
     state.registry.emplace<TelemetryState>(state.ugv);
     state.registry.emplace<SafetyState>(state.ugv);
     state.registry.emplace<ConnectionState>(state.ugv);
-    state.registry.get<ConnectionState>(state.ugv).baudrate = config.serial.baudrate;
+    state.registry.get<ConnectionState>(state.ugv).baudrate = state.serialBaudrate;
 
     auto uiSink = std::make_shared<UiLogSink>(state.logs);
     uiSink->set_pattern("[%T] %v");
@@ -130,7 +133,7 @@ int main(int argc, char** argv) {
     inputManager.addSource(std::make_unique<XInputGamepad>(0, config.input));
 
     if (!config.serial.port.empty()) {
-        worker.requestConnect(config.serial.port, config.serial.baudrate);
+        worker.requestConnect(config.serial.port, state.serialBaudrate);
         std::lock_guard<std::mutex> lk(state.registryMutex);
         state.registry.get<ConnectionState>(state.ugv).portName = config.serial.port;
     }

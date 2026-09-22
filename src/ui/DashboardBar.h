@@ -1,4 +1,5 @@
 #pragma once
+#include "ui/widgets/HoverHitRegions.h"
 #include <QWidget>
 #include <QColor>
 #include <QPixmap>
@@ -7,7 +8,7 @@
 #include <QTimer>
 #include <QElapsedTimer>
 #include <QRect>
-#include <vector>
+#include <QPair>
 
 // Bottom overlay strip on the video feed. Two groups:
 //  - left: module status icons (GPS, velocity sensor, speaker, camera, ESP,
@@ -37,9 +38,18 @@ public:
     void setStmLeftOk(bool ok);
     void setStmRightOk(bool ok);
 
+    // Extra name/value rows appended to the ESP/STM tooltips below the
+    // online/offline status (e.g. RSSI, link state, fault mask) -- callers
+    // pass an empty list when there's nothing more specific to say.
+    using DetailRows = QList<QPair<QString, QString>>;
+    void setEspDetail(const DetailRows& rows);
+    void setStmLeftDetail(const DetailRows& rows);
+    void setStmRightDetail(const DetailRows& rows);
+
 protected:
     void paintEvent(QPaintEvent*) override;
-    bool event(QEvent* e) override;
+    void mouseMoveEvent(QMouseEvent* e) override;
+    void leaveEvent(QEvent* e) override;
 
 private:
     bool  m_cruiseEnabled = false;
@@ -54,6 +64,10 @@ private:
     bool m_espOk            = false;
     bool m_stmLeftOk        = false;
     bool m_stmRightOk       = false;
+
+    DetailRows m_espDetail;
+    DetailRows m_stmLeftDetail;
+    DetailRows m_stmRightDetail;
 
     QByteArray m_cruiseSvg;
     QByteArray m_estopSvg;
@@ -73,9 +87,8 @@ private:
 
     // Icon hover tooltips: hit-test rects rebuilt on every paintEvent, since
     // icon layout is computed there (no child widgets to hang a native
-    // tooltip off of).
-    struct IconHitRect { QRect rect; QString tooltip; };
-    mutable std::vector<IconHitRect> m_hitRects;
+    // tooltip off of). See HoverHitRegions for why re-showing is guarded.
+    mutable HoverHitRegions m_hover;
 
     static QByteArray loadSvgTemplate(const QString& resourcePath);
     QPixmap coloredIcon(const QByteArray& svgTemplate, const QString& cacheKeyPrefix,

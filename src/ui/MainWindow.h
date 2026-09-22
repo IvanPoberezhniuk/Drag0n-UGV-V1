@@ -32,6 +32,7 @@ private slots:
 private:
     void onTick();
     void applyDefaultLayout();
+    void fitLeftSidebarHeights();
 
     AppState&        m_state;
     const AppConfig& m_config;

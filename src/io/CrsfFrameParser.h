@@ -30,6 +30,8 @@ public:
         uint8_t controlRxCount = 0;
         uint8_t lastControlFlags = 0;
         uint8_t lastEnabledMask = 0;
+        uint32_t uptimeMs = 0;
+        uint16_t stackFreeBytes = 0;
     };
     struct Diagnostic {
         uint8_t flags = 0;
@@ -40,18 +42,43 @@ public:
         uint16_t crsfCrcErrorCount = 0;
         DiagnosticLink left;
         DiagnosticLink right;
+        uint32_t espUptimeMs = 0;
+        uint32_t espFreeHeapBytes = 0;
+    };
+    struct BmsTelemetry {
+        uint8_t flags = 0;
+        uint8_t socPct = 0;
+        uint16_t frameAgeMs = 0xFFFFu;
+        float packVoltage = 0.0f;
+        float packCurrent = 0.0f;
+        float remainingCapacity = 0.0f;
+        float fullCapacity = 0.0f;
+        uint16_t cycleCount = 0;
+        uint16_t cellMvMin = 0;
+        uint16_t cellMvMax = 0;
+        uint16_t cellMvDelta = 0;
+        int8_t tempLowC = 0;
+        int8_t tempHighC = 0;
+        uint32_t alarmBits = 0;
+        std::array<uint16_t, 4> cellMv{}; // pack is confirmed 4S
+        bool chargingEnabled = false;
+        bool dischargingEnabled = false;
+        bool chargerPlugged = false;
+        uint8_t balancerStatus = 0; // 0 off, 1 charging balancer, 2 discharging balancer
     };
 
     using OnLinkStats = std::function<void(const LinkStats&)>;
     using OnBattery   = std::function<void(const BatterySensor&)>;
     using OnRpm       = std::function<void(const RpmSensor&)>;
     using OnDiagnostic = std::function<void(const Diagnostic&)>;
+    using OnBms = std::function<void(const BmsTelemetry&)>;
 
     static constexpr size_t kMaxBufSize = 512;
 
     void feed(const uint8_t* data, int len,
               const OnLinkStats& onLink, const OnBattery& onBattery,
-              const OnRpm& onRpm, const OnDiagnostic& onDiagnostic) {
+              const OnRpm& onRpm, const OnDiagnostic& onDiagnostic,
+              const OnBms& onBms) {
         m_buf.insert(m_buf.end(), data, data + len);
 
         while (m_buf.size() >= 4) {
@@ -76,7 +103,7 @@ public:
             const uint8_t* payload    = m_buf.data() + 3;
             size_t         payloadLen = frameLen - 2;
             dispatch(type, payload, payloadLen, onLink, onBattery, onRpm,
-                     onDiagnostic);
+                     onDiagnostic, onBms);
             m_buf.erase(m_buf.begin(), m_buf.begin() + total);
         }
 
@@ -103,6 +130,10 @@ private:
                (static_cast<uint32_t>(value[3]) << 24u);
     }
 
+    static int32_t getI32Le(const uint8_t* value) {
+        return static_cast<int32_t>(getU32Le(value));
+    }
+
     static DiagnosticLink decodeDiagnosticLink(const uint8_t* payload) {
         DiagnosticLink link;
         link.controlTxCount = getU32Le(&payload[0]);
@@ -117,6 +148,8 @@ private:
         link.controlRxCount = payload[19];
         link.lastControlFlags = payload[20];
         link.lastEnabledMask = payload[21];
+        link.uptimeMs = getU32Le(&payload[22]);
+        link.stackFreeBytes = getU16Le(&payload[26]);
         return link;
     }
 
@@ -128,7 +161,8 @@ private:
 
     void dispatch(uint8_t type, const uint8_t* payload, size_t len,
                   const OnLinkStats& onLink, const OnBattery& onBattery,
-                  const OnRpm& onRpm, const OnDiagnostic& onDiagnostic) {
+                  const OnRpm& onRpm, const OnDiagnostic& onDiagnostic,
+                  const OnBms& onBms) {
         if (type == CRSF_FRAMETYPE_LINK_STATISTICS && len >= 10) {
             onLink({ payload[0], payload[1], payload[2] });
         } else if (type == CRSF_FRAMETYPE_BATTERY_SENSOR && len >= 8) {
@@ -149,9 +183,9 @@ private:
                 sensor.rpm[i] = static_cast<int32_t>(raw);
             }
             onRpm(sensor);
-        } else if (type == CRSF_FRAMETYPE_UGV_DIAGNOSTIC && len >= 60u &&
+        } else if (type == CRSF_FRAMETYPE_UGV_DIAGNOSTIC && len >= 80u &&
                    payload[0] == 'U' && payload[1] == 'G' &&
-                   payload[2] == 'V' && payload[3] == 2u) {
+                   payload[2] == 'V' && payload[3] == 3u) {
             Diagnostic diagnostic;
             diagnostic.flags = payload[4];
             diagnostic.driveMode = payload[5];
@@ -160,8 +194,36 @@ private:
             diagnostic.crsfChannelFrameCount = getU32Le(&payload[10]);
             diagnostic.crsfCrcErrorCount = getU16Le(&payload[14]);
             diagnostic.left = decodeDiagnosticLink(&payload[16]);
-            diagnostic.right = decodeDiagnosticLink(&payload[38]);
+            diagnostic.right = decodeDiagnosticLink(&payload[44]);
+            diagnostic.espUptimeMs = getU32Le(&payload[72]);
+            diagnostic.espFreeHeapBytes = getU32Le(&payload[76]);
             onDiagnostic(diagnostic);
+        } else if (type == CRSF_FRAMETYPE_UGV_BMS && len >= 47u &&
+                   payload[0] == 'B' && payload[1] == 'M' &&
+                   payload[2] == 'S' && payload[3] == 2u) {
+            BmsTelemetry bms;
+            bms.flags = payload[4];
+            bms.socPct = payload[5];
+            bms.frameAgeMs = getU16Le(&payload[6]);
+            bms.packVoltage = static_cast<float>(getU32Le(&payload[8])) * 0.001f;
+            bms.packCurrent = static_cast<float>(getI32Le(&payload[12])) * 0.001f;
+            bms.remainingCapacity = static_cast<float>(getU32Le(&payload[16])) * 0.001f;
+            bms.fullCapacity = static_cast<float>(getU32Le(&payload[20])) * 0.001f;
+            bms.cycleCount = getU16Le(&payload[24]);
+            bms.cellMvMin = getU16Le(&payload[26]);
+            bms.cellMvMax = getU16Le(&payload[28]);
+            bms.cellMvDelta = getU16Le(&payload[30]);
+            bms.tempLowC = static_cast<int8_t>(payload[32]);
+            bms.tempHighC = static_cast<int8_t>(payload[33]);
+            bms.alarmBits = getU32Le(&payload[34]);
+            for (size_t i = 0; i < bms.cellMv.size(); ++i) {
+                bms.cellMv[i] = getU16Le(&payload[38 + i * 2]);
+            }
+            bms.chargingEnabled    = (payload[46] & 0x01u) != 0u;
+            bms.dischargingEnabled = (payload[46] & 0x02u) != 0u;
+            bms.chargerPlugged     = (payload[46] & 0x04u) != 0u;
+            bms.balancerStatus     = (payload[46] >> 3) & 0x03u;
+            onBms(bms);
         }
     }
 

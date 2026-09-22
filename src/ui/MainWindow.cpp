@@ -15,6 +15,7 @@
 #include <QApplication>
 #include <QScreen>
 #include <QSettings>
+#include <QStyle>
 #include <QTimer>
 #include <QShowEvent>
 #include <chrono>
@@ -52,20 +53,21 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
         return dock;
     };
 
-    // Left column: Connection (top) + Control (middle) + Legend (bottom)
-    m_connDock    = makeDock("Connection", m_connection, Qt::LeftDockWidgetArea);
-    m_controlDock = makeDock("Control",    m_control,    Qt::LeftDockWidgetArea);
-    m_legendDock  = makeDock("Legend",     m_legend,     Qt::LeftDockWidgetArea);
-    splitDockWidget(m_connDock,    m_controlDock, Qt::Vertical);
-    splitDockWidget(m_controlDock, m_legendDock,  Qt::Vertical);
+    // Left column: Connection (top) + Control (middle) + Telemetry (bottom)
+    m_connDock      = makeDock("", m_connection, Qt::LeftDockWidgetArea);
+    m_controlDock   = makeDock("Control",   m_control,   Qt::LeftDockWidgetArea);
+    m_telemetryDock = makeDock("Telemetry", m_telemetry, Qt::LeftDockWidgetArea);
+    splitDockWidget(m_connDock,    m_controlDock,   Qt::Vertical);
+    splitDockWidget(m_controlDock, m_telemetryDock, Qt::Vertical);
 
-    // Bottom row: Telemetry (left) + Logs (right), full width
-    m_telemetryDock = makeDock("Telemetry", m_telemetry, Qt::BottomDockWidgetArea);
-    m_logsDock      = makeDock("Logs",      m_logs,      Qt::BottomDockWidgetArea);
-    splitDockWidget(m_telemetryDock, m_logsDock, Qt::Horizontal);
+    // Bottom row: Legend (left) + Logs (right) -- to the right of the left column
+    m_legendDock = makeDock("Legend", m_legend, Qt::BottomDockWidgetArea);
+    m_logsDock   = makeDock("Logs",   m_logs,   Qt::BottomDockWidgetArea);
+    splitDockWidget(m_legendDock, m_logsDock, Qt::Horizontal);
 
-    // Bottom spans full window width
-    setCorner(Qt::BottomLeftCorner,  Qt::BottomDockWidgetArea);
+    // Left column runs the full window height; bottom row only spans the
+    // remaining width to its right.
+    setCorner(Qt::BottomLeftCorner,  Qt::LeftDockWidgetArea);
     setCorner(Qt::BottomRightCorner, Qt::BottomDockWidgetArea);
 
     auto* fileMenu   = menuBar()->addMenu("&File");
@@ -81,9 +83,9 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     auto* viewMenu = menuBar()->addMenu("&View");
     viewMenu->addAction(m_connDock->toggleViewAction());
     viewMenu->addAction(m_controlDock->toggleViewAction());
-    viewMenu->addAction(m_legendDock->toggleViewAction());
-    viewMenu->addSeparator();
     viewMenu->addAction(m_telemetryDock->toggleViewAction());
+    viewMenu->addSeparator();
+    viewMenu->addAction(m_legendDock->toggleViewAction());
     viewMenu->addAction(m_logsDock->toggleViewAction());
 
     connect(&m_timer, &QTimer::timeout, this, [this]() { onTick(); });
@@ -99,6 +101,7 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
 
 void MainWindow::showEvent(QShowEvent* e) {
     QMainWindow::showEvent(e);
+    QTimer::singleShot(0, this, &MainWindow::fitLeftSidebarHeights);
     if (!m_layoutDone && !m_hasRestoredLayout) {
         m_layoutDone = true;
         QTimer::singleShot(0, this, &MainWindow::applyDefaultLayout);
@@ -110,13 +113,36 @@ void MainWindow::applyDefaultLayout() {
     int W = screen.width(), H = screen.height();
 
     m_connDock->setFixedWidth(W / 8);
-    resizeDocks({m_telemetryDock, m_logsDock}, {W/2, W/2}, Qt::Horizontal);
-    resizeDocks({m_telemetryDock},             {H / 5},    Qt::Vertical);
+    resizeDocks({m_legendDock, m_logsDock}, {W/2, W/2}, Qt::Horizontal);
+    resizeDocks({m_legendDock},             {H / 5},    Qt::Vertical);
+    fitLeftSidebarHeights();
 
     QTimer::singleShot(200, this, [this]() {
         m_connDock->setMinimumWidth(80);
         m_connDock->setMaximumWidth(QWIDGETSIZE_MAX);
     });
+}
+
+void MainWindow::fitLeftSidebarHeights() {
+    // Connection and Control are compact, content-sized sections. Telemetry
+    // deliberately remains flexible and receives the unused column height.
+    const auto fitDockToContent = [](QDockWidget* dock) {
+        QWidget* content = dock->widget();
+        if (!content) return;
+
+        const int titleHeight = dock->style()->pixelMetric(
+            QStyle::PM_TitleBarHeight, nullptr, dock);
+        const QMargins margins = dock->contentsMargins();
+        const int targetHeight = content->sizeHint().height()
+                               + titleHeight
+                               + margins.top() + margins.bottom();
+
+        if (dock->maximumHeight() != targetHeight)
+            dock->setMaximumHeight(targetHeight);
+    };
+
+    fitDockToContent(m_connDock);
+    fitDockToContent(m_controlDock);
 }
 
 void MainWindow::openSettings() {
@@ -127,6 +153,7 @@ void MainWindow::openSettings() {
 void MainWindow::onTick() {
     m_inputManager.poll(m_state);
     for (auto* p : m_panels) p->refresh();
+    fitLeftSidebarHeights();
 }
 
 void MainWindow::closeEvent(QCloseEvent* e) {

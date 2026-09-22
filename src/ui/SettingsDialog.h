@@ -11,6 +11,8 @@ class QSpinBox;
 class QSlider;
 class QLabel;
 class QTableWidget;
+class QComboBox;
+class QCheckBox;
 
 class SettingsDialog : public QDialog {
     Q_OBJECT
@@ -26,6 +28,7 @@ private slots:
 private:
     QWidget* buildUiPage();
     QWidget* buildControlsPage();
+    QWidget* buildConnectionPage();
     void     populateBindingsTable();
 
     AppState&       m_appState;
@@ -38,12 +41,18 @@ private:
     QLabel*         m_preview      = nullptr;
     QSlider*        m_wheelSlider  = nullptr;
     QSpinBox*       m_wheelSize    = nullptr;
+    QCheckBox*      m_whiteNoise   = nullptr;
 
     // Controls page
     QTableWidget*   m_bindingsTable = nullptr;
 
+    // Connection page
+    QComboBox*      m_baudCombo    = nullptr;
+
     QFont       m_originalFont;
     int         m_originalWheelSize = 100;
+    bool        m_originalWhiteNoise = true;
     KeyBindings m_editedBindings;
     KeyBindings m_originalBindings;
+    uint32_t    m_originalBaudrate = 400000;
 };

@@ -18,9 +18,11 @@ RcChannels mapChannels(const ControlState& ctrl,
     rc.ch[ch.steering - 1] = mapAxis(ctrl.steering);
     rc.ch[ch.throttle - 1] = mapAxis(ctrl.throttle);
 
-    if (ctrl.driveMode == 1)      rc.ch[ch.mode - 1] = CH_MIN;
-    else if (ctrl.driveMode == 2) rc.ch[ch.mode - 1] = CH_CENTER;
-    else                          rc.ch[ch.mode - 1] = CH_MAX;
+    switch (ctrl.driveMode) {
+        case DriveMode::TwoWD:  rc.ch[ch.mode - 1] = CH_MIN;    break;
+        case DriveMode::FourWD: rc.ch[ch.mode - 1] = CH_CENTER; break;
+        case DriveMode::SixWD:  rc.ch[ch.mode - 1] = CH_MAX;    break;
+    }
 
     rc.ch[ch.lights - 1] = ctrl.lightsOn ? CH_MAX : CH_MIN;
     rc.ch[ch.arm    - 1] = ctrl.armed    ? CH_MAX : CH_MIN;

@@ -1,4 +1,5 @@
 #include "ui/widgets/ToggleSwitch.h"
+#include "ui/Theme.h"
 #include <QPainter>
 
 static constexpr int kTrackW = 40;
@@ -25,7 +26,7 @@ void ToggleSwitch::paintEvent(QPaintEvent*) {
     bool on = isChecked();
     int  r  = kTrackH / 2;
 
-    QColor track = on ? QColor(30, 160, 30) : QColor(80, 80, 80);
+    QColor track = on ? Theme::accent : QColor(80, 80, 80);
     p.setPen(Qt::NoPen);
     p.setBrush(track);
     p.drawRoundedRect(QRectF(0, (height() - kTrackH) / 2.0, kTrackW, kTrackH), r, r);

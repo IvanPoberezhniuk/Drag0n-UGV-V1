@@ -7,6 +7,7 @@
 class WheelPanel;
 class CompassBar;
 class DashboardBar;
+class HudCrosshair;
 
 class VideoPanel : public IPanel {
     Q_OBJECT
@@ -17,17 +18,20 @@ public:
 protected:
     void paintEvent(QPaintEvent*) override;
     void resizeEvent(QResizeEvent*) override;
+    void wheelEvent(QWheelEvent*) override;
 
 private:
     AppState&     m_state;
     WheelPanel*   m_wheels    = nullptr;
     CompassBar*   m_compass   = nullptr;
     DashboardBar* m_dashboard = nullptr;
+    HudCrosshair* m_hud       = nullptr;
     QImage        m_noise;
     std::mt19937  m_rng{ std::random_device{}() };
 
     void repositionWheels();
     void repositionCompass();
     void repositionDashboard();
+    void repositionHud();
     void generateNoise();
 };
