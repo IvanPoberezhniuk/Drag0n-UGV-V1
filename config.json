@@ -17,6 +17,7 @@
     },
     "video": {
         "enabled": true,
-        "url": "rtsp://roverpi.local:8554/ugv"
+        "url": "rtsp://roverpi.local:8554/ugv",
+        "preferTcp": false
     }
 }

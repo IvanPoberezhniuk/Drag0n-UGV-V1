@@ -96,8 +96,10 @@ void HudCrosshair::drawCornerFrame(QPainter& painter, const QRectF& frame) const
 
 void HudCrosshair::drawCenterDot(QPainter& painter, const QRectF& frame) const
 {
+    QColor dotColor = Theme::accent;
+    dotColor.setAlpha(100);
     painter.setPen(Qt::NoPen);
-    painter.setBrush(Theme::accent);
+    painter.setBrush(dotColor);
     painter.drawEllipse(frame.center(), kCenterDotRadius, kCenterDotRadius);
 }
 

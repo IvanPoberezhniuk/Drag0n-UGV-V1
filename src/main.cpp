@@ -114,11 +114,11 @@ int main(int argc, char** argv) {
         state.cameraEnabled.store(
             s.value(SettingsKeys::kCameraEnabled, true).toBool());
         state.gpsWatchEnabled.store(
-            s.value(SettingsKeys::kGpsWatchEnabled, false).toBool());
+            s.value(SettingsKeys::kGpsWatchEnabled, true).toBool());
         state.velocityWatchEnabled.store(
-            s.value(SettingsKeys::kVelocityWatchEnabled, false).toBool());
+            s.value(SettingsKeys::kVelocityWatchEnabled, true).toBool());
         state.speakerWatchEnabled.store(
-            s.value(SettingsKeys::kSpeakerWatchEnabled, false).toBool());
+            s.value(SettingsKeys::kSpeakerWatchEnabled, true).toBool());
         for (int i = 0; i < KeyBindings::Count; ++i) {
             auto k1 = QString(SettingsKeys::kBindKey1Fmt).arg(i);
             auto k2 = QString(SettingsKeys::kBindKey2Fmt).arg(i);

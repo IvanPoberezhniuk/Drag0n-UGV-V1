@@ -140,6 +140,10 @@ void DashboardBar::setCameraStreaming(bool streaming) {
     update();
 }
 
+void DashboardBar::setCameraDetail(const DetailRows& rows) {
+    m_cameraDetail = rows;
+}
+
 void DashboardBar::setEspOk(bool ok) {
     m_espOk = ok;
     update();
@@ -185,21 +189,21 @@ void DashboardBar::paintEvent(QPaintEvent*) {
     p.drawRect(0, 0, W, H);
 
     // --- Left group: module status icons, health-only (no text). ---
-    // Color scheme: amber = connected/on, red = genuine error, gray = "not
-    // important"/disabled. GPS/velocity/speaker have no backend data source
-    // at all (no such hardware wired into telemetry) -- they're honest
-    // UI-preference toggles with no fail state: gray+crossed when off
-    // (their permanent default), plain amber when on. Camera is the one
-    // module icon among the four with a real connected/not-connected
-    // signal: gray+crossed when the user disabled it, red when enabled but
-    // not streaming, amber blink when actually streaming. ESP/STM32 are not
-    // toggleable: amber online, red offline, never gray.
+    // Color scheme: amber = available/on, red = genuine controller error,
+    // gray = unavailable or user-disabled. A cross has exactly one meaning:
+    // the operator explicitly switched that feature off. An enabled feature
+    // whose hardware/status is unavailable stays plain gray. Camera is the
+    // only one of the four toggles with a live availability signal today;
+    // GPS/velocity/speaker remain unavailable until their telemetry sources
+    // are integrated. ESP/STM32 are not toggleable: amber online, red
+    // offline, and never crossed.
     struct StatusIcon {
         const char* cacheKey;
         const QByteArray* svg;
         QColor color;
         QString tooltip;
         bool crossed = false;
+        bool canToggle = false;
     };
     // A touch of transparency on every icon color keeps the strip from
     // reading as harshly saturated against the video feed.
@@ -210,23 +214,34 @@ void DashboardBar::paintEvent(QPaintEvent*) {
     // used below for inactive cruise/estop/lights.
     const QColor offColor(120, 120, 120, 170);
 
-    const QString gpsStatus = m_gpsWatchEnabled ? "On" : "Off (click to enable)";
-    const QString velStatus = m_velocityWatchEnabled ? "On" : "Off (click to enable)";
-    const QString spkStatus = m_speakerWatchEnabled ? "On" : "Off (click to enable)";
+    constexpr bool gpsAvailable = false;
+    constexpr bool velocityAvailable = false;
+    constexpr bool speakerAvailable = false;
+
+    const QString gpsStatus = !m_gpsWatchEnabled ? "Off (click to enable)"
+                            : gpsAvailable ? "Available" : "Unavailable";
+    const QString velStatus = !m_velocityWatchEnabled ? "Off (click to enable)"
+                            : velocityAvailable ? "Available" : "Unavailable";
+    const QString spkStatus = !m_speakerWatchEnabled ? "Off (click to enable)"
+                            : speakerAvailable ? "Available" : "Unavailable";
     const QString camStatus = !m_cameraEnabled ? "Off (click to enable)"
                              : m_cameraStreaming ? "Streaming (click to disable)"
-                                                  : "No signal (click to disable)";
+                                                  : "No signal";
 
     StatusIcon statusIcons[7] = {
-        { "gps", &m_gpsSvg,      m_gpsWatchEnabled      ? onColor : offColor,
-          tooltipHtml("GPS Module", {{"Status", gpsStatus}}), !m_gpsWatchEnabled },
-        { "vel", &m_velocitySvg, m_velocityWatchEnabled ? onColor : offColor,
-          tooltipHtml("Velocity Sensor", {{"Status", velStatus}}), !m_velocityWatchEnabled },
-        { "spk", &m_speakerSvg,  m_speakerWatchEnabled  ? onColor : offColor,
-          tooltipHtml("Speaker", {{"Status", spkStatus}}), !m_speakerWatchEnabled },
+        { "gps", &m_gpsSvg,      m_gpsWatchEnabled && gpsAvailable ? onColor : offColor,
+          tooltipHtml("GPS Module", {{"Status", gpsStatus}}), !m_gpsWatchEnabled,
+          !m_gpsWatchEnabled || gpsAvailable },
+        { "vel", &m_velocitySvg, m_velocityWatchEnabled && velocityAvailable ? onColor : offColor,
+          tooltipHtml("Velocity Sensor", {{"Status", velStatus}}), !m_velocityWatchEnabled,
+          !m_velocityWatchEnabled || velocityAvailable },
+        { "spk", &m_speakerSvg,  m_speakerWatchEnabled && speakerAvailable ? onColor : offColor,
+          tooltipHtml("Speaker", {{"Status", spkStatus}}), !m_speakerWatchEnabled,
+          !m_speakerWatchEnabled || speakerAvailable },
         { "cam", &m_cameraSvg,
-          !m_cameraEnabled ? offColor : (m_cameraStreaming ? soften(cameraBlinkColor()) : critColor),
-          tooltipHtml("Camera", {{"Status", camStatus}}), !m_cameraEnabled },
+          !m_cameraEnabled ? offColor : (m_cameraStreaming ? soften(cameraBlinkColor()) : offColor),
+          tooltipHtml("Camera", DetailRows{{"Status", camStatus}} + m_cameraDetail), !m_cameraEnabled,
+          !m_cameraEnabled || m_cameraStreaming },
         { "esp", &m_espSvg,      m_espOk            ? onColor : critColor,
           tooltipHtml("ESP32 Controller",
               DetailRows{{"Status", m_espOk ? "Online" : "Offline"}} + m_espDetail) },
@@ -244,14 +259,21 @@ void DashboardBar::paintEvent(QPaintEvent*) {
             QRect box(sx, qRound((H - kIconSize) / 2.0), kIconSize, kIconSize);
             p.drawPixmap(box, coloredIcon(*icon.svg, icon.cacheKey, icon.color, kIconSize));
             if (icon.crossed) {
-                QPen pen(offColor.lighter(140));
+                QPen pen(offColor);
                 pen.setWidth(2);
+                pen.setCapStyle(Qt::RoundCap);
                 p.setPen(pen);
-                p.drawLine(box.topLeft(), box.bottomRight());
+                constexpr int kCrossInset = 3;
+                p.drawLine(box.bottomLeft() + QPoint(kCrossInset, -kCrossInset),
+                           box.topRight() + QPoint(-kCrossInset, kCrossInset));
             }
             const QRect hitBox = box.adjusted(-kHoverPad, -kHoverPad, kHoverPad, kHoverPad);
             m_hover.add(hitBox, icon.tooltip);
-            if (i < 4) m_toggleRects[i] = hitBox; // gps, velocity, speaker, camera
+            if (i < 4) {
+                // Unavailable enabled items are status-only. A disabled item
+                // remains clickable so the operator can enable it again.
+                m_toggleRects[i] = icon.canToggle ? hitBox : QRect{};
+            }
             sx += kIconSize + kItemGap;
         }
     }

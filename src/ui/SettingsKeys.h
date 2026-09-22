@@ -14,6 +14,7 @@ namespace SettingsKeys {
     static constexpr const char* kBaudRate     = "connection/baudrate";
     static constexpr const char* kGeometry     = "geometry";
     static constexpr const char* kWindowState  = "windowState";
+    static constexpr const char* kLayoutVersion = "layoutVersion";
     static constexpr const char* kBindKey1Fmt  = "keybindings/%1/key1";
     static constexpr const char* kBindKey2Fmt  = "keybindings/%1/key2";
 }

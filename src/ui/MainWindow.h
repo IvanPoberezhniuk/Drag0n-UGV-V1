@@ -14,6 +14,7 @@ class ControlPanel;
 class TelemetryPanel;
 class LogsPanel;
 class LegendPanel;
+class CameraSettingsPanel;
 class VideoPanel;
 class QDockWidget;
 
@@ -47,6 +48,7 @@ private:
     TelemetryPanel*  m_telemetry  = nullptr;
     LogsPanel*       m_logs       = nullptr;
     LegendPanel*     m_legend     = nullptr;
+    CameraSettingsPanel* m_cameraSettings = nullptr;
     VideoPanel*      m_video      = nullptr;
 
     QDockWidget* m_connDock      = nullptr;
@@ -54,6 +56,7 @@ private:
     QDockWidget* m_telemetryDock = nullptr;
     QDockWidget* m_logsDock      = nullptr;
     QDockWidget* m_legendDock    = nullptr;
+    QDockWidget* m_cameraSettingsDock = nullptr;
 
     std::vector<IPanel*> m_panels;
 

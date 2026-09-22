@@ -28,12 +28,12 @@ struct AppState {
     // Dashboard status-icon click-to-toggle state (see DashboardBar). Camera
     // has real effect (pauses/resumes VideoWorker); GPS/velocity/speaker have
     // no telemetry source behind them at all yet, so their toggle is
-    // UI-preference-only -- default off, which is their permanent honest
-    // state until that hardware lands.
+    // UI-preference-only. They default enabled so missing hardware is shown
+    // as plain gray; a cross appears only after an explicit user disable.
     std::atomic<bool> cameraEnabled        {true};
-    std::atomic<bool> gpsWatchEnabled      {false};
-    std::atomic<bool> velocityWatchEnabled {false};
-    std::atomic<bool> speakerWatchEnabled  {false};
+    std::atomic<bool> gpsWatchEnabled      {true};
+    std::atomic<bool> velocityWatchEnabled {true};
+    std::atomic<bool> speakerWatchEnabled  {true};
 
     LogBuffer logs;
 

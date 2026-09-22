@@ -89,7 +89,39 @@ void VideoWorker::clearFrame() {
 
 void VideoWorker::publishStreaming(bool streaming) {
     std::lock_guard<std::mutex> lk(m_state.registryMutex);
-    m_state.registry.get<CameraState>(m_state.ugv).streaming = streaming;
+    auto& camera = m_state.registry.get<CameraState>(m_state.ugv);
+    if (!streaming) {
+        camera = CameraState{};
+        return;
+    }
+
+    camera.streaming = true;
+    camera.width = m_codecCtx ? m_codecCtx->width : 0;
+    camera.height = m_codecCtx ? m_codecCtx->height : 0;
+    camera.transport = m_config.preferTcp ? "TCP" : "UDP";
+
+    if (m_codecCtx) {
+        camera.codec = avcodec_get_name(m_codecCtx->codec_id);
+        if (m_codecCtx->codec) {
+            if (const char* profile = av_get_profile_name(m_codecCtx->codec, m_codecCtx->profile)) {
+                camera.profile = profile;
+            }
+        }
+    }
+
+    if (m_fmtCtx && m_videoStreamIndex >= 0) {
+        const AVRational rate = av_guess_frame_rate(
+            m_fmtCtx, m_fmtCtx->streams[m_videoStreamIndex], nullptr);
+        if (rate.num > 0 && rate.den > 0) camera.advertisedFps = av_q2d(rate);
+    }
+}
+
+void VideoWorker::publishStreamStats(double decodedFps, uint32_t bitrateKbps) {
+    std::lock_guard<std::mutex> lk(m_state.registryMutex);
+    auto& camera = m_state.registry.get<CameraState>(m_state.ugv);
+    if (!camera.streaming) return;
+    camera.decodedFps = decodedFps;
+    camera.bitrateKbps = bitrateKbps;
 }
 
 void VideoWorker::armDeadline(uint32_t timeoutMs) {
@@ -98,6 +130,7 @@ void VideoWorker::armDeadline(uint32_t timeoutMs) {
 
 bool VideoWorker::shouldAbort() const {
     if (!m_running.load(std::memory_order_relaxed)) return true;
+    if (!m_userEnabled.load(std::memory_order_relaxed)) return true;
     return nowMs() > m_ioDeadlineMs;
 }
 
@@ -122,9 +155,23 @@ bool VideoWorker::openStream() {
     m_fmtCtx->interrupt_callback.opaque   = this;
 
     AVDictionary* opts = nullptr;
-    if (m_config.preferTcp) av_dict_set(&opts, "rtsp_transport", "tcp", 0);
+    // Select the transport explicitly. Leaving FFmpeg's transport on
+    // "automatic" can fall back to TCP, where a slow frame consumer builds
+    // seconds of stale video behind the socket's reliable byte stream. UDP
+    // is the intended teleoperation mode: a late packet can be discarded
+    // instead of delaying every frame after it.
+    av_dict_set(&opts, "rtsp_transport", m_config.preferTcp ? "tcp" : "udp", 0);
+
+    // Keep the demuxer and UDP socket shallow while still giving Windows
+    // enough kernel receive space for an encoded I-frame burst. In
+    // particular, disable RTP reordering: waiting for a missing Wi-Fi packet
+    // is useful for playback, but visibly increases control-camera latency.
     av_dict_set(&opts, "fflags", "nobuffer", 0);
+    av_dict_set(&opts, "avioflags", "direct", 0);
     av_dict_set(&opts, "flags", "low_delay", 0);
+    av_dict_set(&opts, "max_delay", "0", 0);
+    av_dict_set(&opts, "reorder_queue_size", "0", 0);
+    av_dict_set(&opts, "buffer_size", "2097152", 0);
 
     armDeadline(m_config.openTimeoutMs);
     int ret = avformat_open_input(&m_fmtCtx, m_config.url.c_str(), nullptr, &opts);
@@ -163,6 +210,7 @@ bool VideoWorker::openStream() {
     // the wrong tradeoff for a live teleoperation feed. 720p H.264 is
     // cheap enough on one core.
     m_codecCtx->thread_count = 1;
+    m_codecCtx->flags |= AV_CODEC_FLAG_LOW_DELAY;
 
     if (avcodec_open2(m_codecCtx, decoder, nullptr) < 0) {
         spdlog::warn("VideoWorker: avcodec_open2 failed");
@@ -236,12 +284,16 @@ void VideoWorker::storeFrame(const AVFrame* frame) {
 void VideoWorker::decodeLoop() {
     const uint32_t readTimeoutMs =
         std::max<uint32_t>(m_config.staleFrameMs * 3u, kReadTimeoutFloorMs);
+    auto statsStart = Clock::now();
+    uint64_t encodedBytes = 0;
+    uint32_t decodedFrames = 0;
 
-    while (m_running.load()) {
+    while (m_running.load() && m_userEnabled.load(std::memory_order_relaxed)) {
         armDeadline(readTimeoutMs);
         int ret = av_read_frame(m_fmtCtx, m_pkt);
         if (ret < 0) {
-            if (ret != AVERROR_EOF) {
+            if (ret != AVERROR_EOF && m_running.load(std::memory_order_relaxed)
+                && m_userEnabled.load(std::memory_order_relaxed)) {
                 char errbuf[128];
                 av_strerror(ret, errbuf, sizeof(errbuf));
                 spdlog::warn("VideoWorker: av_read_frame error: {}", errbuf);
@@ -253,6 +305,8 @@ void VideoWorker::decodeLoop() {
             av_packet_unref(m_pkt);
             continue;
         }
+
+        encodedBytes += static_cast<uint64_t>(std::max(m_pkt->size, 0));
 
         ret = avcodec_send_packet(m_codecCtx, m_pkt);
         av_packet_unref(m_pkt);
@@ -273,7 +327,21 @@ void VideoWorker::decodeLoop() {
                 return;
             }
             storeFrame(m_frame);
+            ++decodedFrames;
             av_frame_unref(m_frame);
+        }
+
+        const auto now = Clock::now();
+        const auto statsElapsedMs = std::chrono::duration_cast<Ms>(now - statsStart).count();
+        if (statsElapsedMs >= 1000) {
+            const double seconds = static_cast<double>(statsElapsedMs) / 1000.0;
+            const double fps = static_cast<double>(decodedFrames) / seconds;
+            const auto kbps = static_cast<uint32_t>(
+                (static_cast<double>(encodedBytes) * 8.0) / (seconds * 1000.0));
+            publishStreamStats(fps, kbps);
+            statsStart = now;
+            encodedBytes = 0;
+            decodedFrames = 0;
         }
     }
 }

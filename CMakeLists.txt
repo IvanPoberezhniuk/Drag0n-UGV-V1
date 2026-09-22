@@ -86,6 +86,8 @@ qt_add_executable(UGVControlStation WIN32
     src/ui/panels/TelemetryPanel.cpp
     src/ui/panels/LogsPanel.cpp
     src/ui/panels/LegendPanel.cpp
+    src/ui/panels/CameraSettingsPanel.cpp
+    src/ui/panels/CameraSettingsPanel.h
     src/ui/panels/VideoPanel.cpp
     src/ui/panels/VideoPanel.h
     src/ui/panels/WheelPanel.cpp

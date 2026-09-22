@@ -189,7 +189,31 @@ void VideoPanel::refresh() {
         // registry like every other status field in this method, not via a
         // direct VideoWorker call.
         m_dashboard->setCameraEnabled(m_state.cameraEnabled.load());
-        m_dashboard->setCameraStreaming(m_state.registry.get<CameraState>(m_state.ugv).streaming);
+        const auto& camera = m_state.registry.get<CameraState>(m_state.ugv);
+        m_dashboard->setCameraStreaming(camera.streaming);
+        DashboardBar::DetailRows cameraDetail;
+        if (camera.width > 0 && camera.height > 0) {
+            cameraDetail.append({"Resolution", QString("%1 x %2").arg(camera.width).arg(camera.height)});
+        }
+        if (!camera.codec.empty()) {
+            QString codec = QString::fromStdString(camera.codec).toUpper();
+            if (!camera.profile.empty()) {
+                codec += " / " + QString::fromStdString(camera.profile);
+            }
+            cameraDetail.append({"Codec", codec});
+        }
+        if (camera.advertisedFps > 0.0) {
+            cameraDetail.append({"Frame rate", QString("%1 fps (source), %2 fps decoded")
+                .arg(camera.advertisedFps, 0, 'f', 1)
+                .arg(camera.decodedFps, 0, 'f', 1)});
+        }
+        if (camera.bitrateKbps > 0) {
+            cameraDetail.append({"Bitrate", QString("%1 Mbit/s").arg(camera.bitrateKbps / 1000.0, 0, 'f', 2)});
+        }
+        if (!camera.transport.empty()) {
+            cameraDetail.append({"Transport", QString::fromStdString(camera.transport)});
+        }
+        m_dashboard->setCameraDetail(cameraDetail);
 
         m_hud->setThrottle(ctrl.throttle);
         m_hud->setBatteryLevel(

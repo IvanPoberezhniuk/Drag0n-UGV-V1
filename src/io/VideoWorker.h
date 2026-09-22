@@ -100,6 +100,7 @@ private:
     void interruptibleSleep(uint32_t ms);
     void clearFrame();
     void publishStreaming(bool streaming);
+    void publishStreamStats(double decodedFps, uint32_t bitrateKbps);
 
     static int interruptCallback(void* opaque);
 

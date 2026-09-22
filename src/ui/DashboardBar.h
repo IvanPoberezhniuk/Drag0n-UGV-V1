@@ -30,11 +30,11 @@ public:
     // Module status (left group).
     //
     // GPS/velocity-sensor/speaker have no backend data source at all yet (no
-    // such hardware wired into telemetry) -- these three are honest
-    // UI-preference toggles: "enabled" just means the operator turned the
-    // icon on, there is no real ok/fail signal behind it. Click the icon to
-    // toggle (see gpsWatchToggled etc. below); off is gray+crossed, on is
-    // plain amber, no red state.
+    // such hardware wired into telemetry). "Enabled" records only the
+    // operator's preference: off is gray+crossed, while enabled but
+    // unavailable is plain gray and cannot be clicked. A disabled item stays
+    // clickable so the operator can enable it again. Once an availability
+    // source is integrated, enabled+available becomes amber and clickable.
     void setGpsWatchEnabled(bool enabled);
     void setVelocityWatchEnabled(bool enabled);
     void setSpeakerWatchEnabled(bool enabled);
@@ -42,8 +42,8 @@ public:
     // Camera is the one module-status icon with a real connected/not signal
     // (VideoWorker/CameraState). setCameraEnabled reflects the user's
     // on/off toggle (gray+crossed when off); setCameraStreaming reflects
-    // actual stream health while enabled (amber blink = streaming, red = no
-    // signal).
+    // actual stream health while enabled (amber blink = streaming, plain
+    // gray = no signal).
     void setCameraEnabled(bool enabled);
     void setCameraStreaming(bool streaming); // true = actively sharing an image
 
@@ -57,6 +57,7 @@ public:
     // online/offline status (e.g. RSSI, link state, fault mask) -- callers
     // pass an empty list when there's nothing more specific to say.
     using DetailRows = QList<QPair<QString, QString>>;
+    void setCameraDetail(const DetailRows& rows);
     void setEspDetail(const DetailRows& rows);
     void setStmLeftDetail(const DetailRows& rows);
     void setStmRightDetail(const DetailRows& rows);
@@ -101,6 +102,7 @@ private:
     DetailRows m_espDetail;
     DetailRows m_stmLeftDetail;
     DetailRows m_stmRightDetail;
+    DetailRows m_cameraDetail;
 
     QByteArray m_cruiseSvg;
     QByteArray m_estopSvg;

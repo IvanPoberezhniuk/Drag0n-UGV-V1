@@ -4,6 +4,7 @@
 #include "ui/panels/TelemetryPanel.h"
 #include "ui/panels/LogsPanel.h"
 #include "ui/panels/LegendPanel.h"
+#include "ui/panels/CameraSettingsPanel.h"
 #include "ui/panels/VideoPanel.h"
 #include "ui/SettingsDialog.h"
 #include "ui/SettingsKeys.h"
@@ -21,6 +22,10 @@
 #include <QShowEvent>
 #include <chrono>
 #include <mutex>
+
+namespace {
+constexpr int kCurrentLayoutVersion = 5;
+}
 
 MainWindow::MainWindow(AppState& state, const AppConfig& config,
                        SerialWorker& worker, VideoWorker& videoWorker,
@@ -42,14 +47,17 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     m_telemetry  = new TelemetryPanel(m_state, this);
     m_logs       = new LogsPanel(m_state, this);
     m_legend     = new LegendPanel(m_state, this);
+    m_cameraSettings = new CameraSettingsPanel(m_state, this);
     m_video      = new VideoPanel(m_state, m_videoWorker, this);
 
     setCentralWidget(m_video);
 
-    m_panels = { m_connection, m_control, m_telemetry, m_logs, m_legend, m_video };
+    m_panels = { m_connection, m_control, m_telemetry, m_logs, m_legend,
+                 m_cameraSettings, m_video };
 
-    auto makeDock = [this](const QString& title, QWidget* w, Qt::DockWidgetArea area) {
-        auto* dock = new QDockWidget(title, this);
+    auto makeDock = [this](const QString& objectName, QWidget* w, Qt::DockWidgetArea area) {
+        auto* dock = new QDockWidget("", this);
+        dock->setObjectName(objectName);
         dock->setWidget(w);
         dock->setAllowedAreas(Qt::AllDockWidgetAreas);
         addDockWidget(area, dock);
@@ -68,16 +76,20 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     };
 
     // Left column: Connection (top) + Control (middle) + Telemetry (bottom)
-    m_connDock      = makeDock("", m_connection, Qt::LeftDockWidgetArea);
-    m_controlDock   = makeDock("", m_control,   Qt::LeftDockWidgetArea);
-    m_telemetryDock = makeDock("", m_telemetry, Qt::LeftDockWidgetArea);
+    m_connDock      = makeDock("connectionDock", m_connection, Qt::LeftDockWidgetArea);
+    m_controlDock   = makeDock("controlDock", m_control,   Qt::LeftDockWidgetArea);
+    m_telemetryDock = makeDock("telemetryDock", m_telemetry, Qt::LeftDockWidgetArea);
     splitDockWidget(m_connDock,    m_controlDock,   Qt::Vertical);
     splitDockWidget(m_controlDock, m_telemetryDock, Qt::Vertical);
 
-    // Bottom row: Legend (left) + Logs (right) -- to the right of the left column
-    m_legendDock = makeDock("", m_legend, Qt::BottomDockWidgetArea);
-    m_logsDock   = makeDock("", m_logs,   Qt::BottomDockWidgetArea);
-    splitDockWidget(m_legendDock, m_logsDock, Qt::Horizontal);
+    // Bottom row: Legend + Camera settings + Logs, to the right of the left
+    // column. Camera settings deliberately sits between the two existing
+    // panels so the draft controls stay visible without covering video.
+    m_legendDock         = makeDock("legendDock", m_legend,         Qt::BottomDockWidgetArea);
+    m_cameraSettingsDock = makeDock("cameraSettingsDock", m_cameraSettings, Qt::BottomDockWidgetArea);
+    m_logsDock           = makeDock("logsDock", m_logs,           Qt::BottomDockWidgetArea);
+    splitDockWidget(m_legendDock,         m_cameraSettingsDock, Qt::Horizontal);
+    splitDockWidget(m_cameraSettingsDock, m_logsDock,           Qt::Horizontal);
 
     // Left column runs the full window height; bottom row only spans the
     // remaining width to its right.
@@ -99,12 +111,14 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     m_controlDock->toggleViewAction()->setText("Control");
     m_telemetryDock->toggleViewAction()->setText("Telemetry");
     m_legendDock->toggleViewAction()->setText("Legend");
+    m_cameraSettingsDock->toggleViewAction()->setText("Camera Settings");
     m_logsDock->toggleViewAction()->setText("Logs");
     viewMenu->addAction(m_connDock->toggleViewAction());
     viewMenu->addAction(m_controlDock->toggleViewAction());
     viewMenu->addAction(m_telemetryDock->toggleViewAction());
     viewMenu->addSeparator();
     viewMenu->addAction(m_legendDock->toggleViewAction());
+    viewMenu->addAction(m_cameraSettingsDock->toggleViewAction());
     viewMenu->addAction(m_logsDock->toggleViewAction());
 
     connect(&m_timer, &QTimer::timeout, this, [this]() { onTick(); });
@@ -112,9 +126,10 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
 
     QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
     if (s.contains(SettingsKeys::kGeometry))    restoreGeometry(s.value(SettingsKeys::kGeometry).toByteArray());
-    if (s.contains(SettingsKeys::kWindowState)) {
-        restoreState(s.value(SettingsKeys::kWindowState).toByteArray());
-        m_hasRestoredLayout = true;
+    if (s.value(SettingsKeys::kLayoutVersion, 0).toInt() == kCurrentLayoutVersion
+        && s.contains(SettingsKeys::kWindowState)) {
+        m_hasRestoredLayout = restoreState(
+            s.value(SettingsKeys::kWindowState).toByteArray(), kCurrentLayoutVersion);
     }
 }
 
@@ -131,9 +146,22 @@ void MainWindow::applyDefaultLayout() {
     QRect screen = QApplication::primaryScreen()->availableGeometry();
     int W = screen.width(), H = screen.height();
 
+    // A legacy saved layout could leave the bottom area collapsed. This is
+    // also the one-time default for the new camera-settings dock.
+    for (auto* dock : {m_legendDock, m_cameraSettingsDock, m_logsDock}) {
+        dock->setFloating(false);
+        addDockWidget(Qt::BottomDockWidgetArea, dock);
+    }
+    splitDockWidget(m_legendDock, m_cameraSettingsDock, Qt::Horizontal);
+    splitDockWidget(m_cameraSettingsDock, m_logsDock, Qt::Horizontal);
+    m_legendDock->show();
+    m_cameraSettingsDock->show();
+    m_logsDock->show();
     m_connDock->setFixedWidth(W / 8);
-    resizeDocks({m_legendDock, m_logsDock}, {W/2, W/2}, Qt::Horizontal);
-    resizeDocks({m_legendDock},             {H / 5},    Qt::Vertical);
+    resizeDocks({m_legendDock, m_cameraSettingsDock, m_logsDock},
+                {W/3, W/3, W/3}, Qt::Horizontal);
+    resizeDocks({m_legendDock, m_cameraSettingsDock, m_logsDock},
+                {H / 5, H / 5, H / 5}, Qt::Vertical);
     fitLeftSidebarHeights();
 
     QTimer::singleShot(200, this, [this]() {
@@ -178,7 +206,8 @@ void MainWindow::onTick() {
 void MainWindow::closeEvent(QCloseEvent* e) {
     QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
     s.setValue(SettingsKeys::kGeometry,    saveGeometry());
-    s.setValue(SettingsKeys::kWindowState, saveState());
+    s.setValue(SettingsKeys::kWindowState, saveState(kCurrentLayoutVersion));
+    s.setValue(SettingsKeys::kLayoutVersion, kCurrentLayoutVersion);
 
     m_timer.stop();
     // Signal both workers to unwind before joining either -- each stop()
