@@ -13,6 +13,7 @@
         <file>icons/camera.svg</file>
         <file>icons/esp-status.svg</file>
         <file>icons/stm-status.svg</file>
+        <file>icons/navigation-off.svg</file>
         <file>icons/trash.svg</file>
         <file>icons/plug-connected.svg</file>
         <file>icons/plug-off.svg</file>

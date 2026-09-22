@@ -17,5 +17,6 @@ recoloring at render time (see `DashboardBar::coloredIcon()`).
 | camera.svg      | camera               |
 | esp-status.svg  | cpu                  |
 | stm-status.svg  | cpu-2                |
+| navigation-off.svg | navigation-off    |
 | x.svg           | x                    |
 | square.svg      | square               |
