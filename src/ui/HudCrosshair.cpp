@@ -15,6 +15,7 @@ constexpr int kHudHeight = 560;
 constexpr int kFrameInset = 6;
 constexpr int kCornerLength = 64;
 constexpr qreal kContentInset = 21.0;
+constexpr qreal kCenterDotRadius = 3.0;
 
 constexpr qreal kThrottleXInset = kContentInset;
 constexpr qreal kThrottleTopInset = kContentInset;
@@ -91,6 +92,13 @@ void HudCrosshair::drawCornerFrame(QPainter& painter, const QRectF& frame) const
     QColor frameColor = Theme::accent;
     frameColor.setAlpha(100); // Match inactive throttle segments.
     drawCrispPath(painter, corners, frameColor, 2.5);
+}
+
+void HudCrosshair::drawCenterDot(QPainter& painter, const QRectF& frame) const
+{
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Theme::accent);
+    painter.drawEllipse(frame.center(), kCenterDotRadius, kCenterDotRadius);
 }
 
 void HudCrosshair::drawThrottle(QPainter& painter, const QRectF& frame) const
@@ -171,6 +179,7 @@ void HudCrosshair::paintEvent(QPaintEvent*)
     const QRectF frame = QRectF(rect()).adjusted(
         kFrameInset, kFrameInset, -kFrameInset, -kFrameInset);
     drawCornerFrame(painter, frame);
+    drawCenterDot(painter, frame);
     drawThrottle(painter, frame);
     drawBattery(painter, frame);
 }

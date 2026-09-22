@@ -26,6 +26,7 @@ private:
     void drawCrispPath(QPainter& painter, const QPainterPath& path,
                        const QColor& color, qreal width = 2.0) const;
     void drawCornerFrame(QPainter& painter, const QRectF& frame) const;
+    void drawCenterDot(QPainter& painter, const QRectF& frame) const;
     void drawThrottle(QPainter& painter, const QRectF& frame) const;
     void drawBattery(QPainter& painter, const QRectF& frame) const;
 
