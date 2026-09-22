@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cmake *)",
+      "Bash(cmake *)",
+      "PowerShell(taskkill /IM UGVControlStation.exe /F*)",
+      "Bash(touch*)",
+      "Bash(ls*)",
+      "Bash(grep*)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git status*)",
+      "Bash(git merge *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git fetch*)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)",
+      "PowerShell(git diff*)",
+      "PowerShell(git log*)",
+      "PowerShell(git show*)",
+      "PowerShell(git status*)",
+      "PowerShell(git merge *)",
+      "PowerShell(git cherry-pick *)",
+      "PowerShell(git fetch*)"
+    ]
+  }
+}
