@@ -3,15 +3,22 @@
 #include "ui/CompassBar.h"
 #include "ui/DashboardBar.h"
 #include "ui/HudCrosshair.h"
+#include "ui/widgets/NoSignalBadge.h"
 #include "ui/Theme.h"
 #include "core/TelemetryState.h"
 #include "core/ControlState.h"
 #include "core/SafetyState.h"
 #include "core/SafetyStateName.h"
+#include "core/CameraState.h"
+#include "ui/SettingsKeys.h"
 #include <QPainter>
 #include <QWheelEvent>
+#include <QSettings>
 #include <algorithm>
 #include <mutex>
+
+static const QColor kScanlineColor    { 0,  0,  0,  60 };
+static const QColor kOfflineBg        {18, 18, 18       };
 
 namespace {
 QString formatUptime(uint32_t uptimeMs) {
@@ -47,8 +54,8 @@ static constexpr int kBottomOverbleed = 4; // extends past the panel's bottom ed
                                             // it -- Qt clips child widgets to the
                                             // parent rect, so this is never visible
 
-VideoPanel::VideoPanel(AppState& state, QWidget* parent)
-    : IPanel(parent), m_state(state)
+VideoPanel::VideoPanel(AppState& state, VideoWorker& videoWorker, QWidget* parent)
+    : IPanel(parent), m_state(state), m_videoWorker(videoWorker)
 {
     setMinimumSize(320, 240);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -69,6 +76,41 @@ VideoPanel::VideoPanel(AppState& state, QWidget* parent)
     m_hud = new HudCrosshair(this);
     m_hud->show();
     repositionHud();
+
+    // Real sibling widget, not painted inline in this class's own
+    // paintEvent -- see NoSignalBadge.h for why that's required to get it
+    // above m_hud in z-order. Shown/hidden and re-raised every paintEvent
+    // based on live stream state (see paintEvent below).
+    m_noSignalBadge = new NoSignalBadge(this);
+    m_noSignalBadge->hide();
+    repositionNoSignalBadge();
+
+    // Dashboard status-icon click-to-toggle (see DashboardBar's
+    // cameraToggled/gpsWatchToggled/... signals). Camera has real effect on
+    // VideoWorker; GPS/velocity/speaker are UI-preference-only (no backend
+    // data source exists for them). All four persist via QSettings the same
+    // way whiteNoiseEnabled does.
+    connect(m_dashboard, &DashboardBar::cameraToggled, this, [this](bool enabled) {
+        m_state.cameraEnabled.store(enabled);
+        m_videoWorker.setEnabled(enabled);
+        QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
+        s.setValue(SettingsKeys::kCameraEnabled, enabled);
+    });
+    connect(m_dashboard, &DashboardBar::gpsWatchToggled, this, [this](bool enabled) {
+        m_state.gpsWatchEnabled.store(enabled);
+        QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
+        s.setValue(SettingsKeys::kGpsWatchEnabled, enabled);
+    });
+    connect(m_dashboard, &DashboardBar::velocityWatchToggled, this, [this](bool enabled) {
+        m_state.velocityWatchEnabled.store(enabled);
+        QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
+        s.setValue(SettingsKeys::kVelocityWatchEnabled, enabled);
+    });
+    connect(m_dashboard, &DashboardBar::speakerWatchToggled, this, [this](bool enabled) {
+        m_state.speakerWatchEnabled.store(enabled);
+        QSettings s(SettingsKeys::kOrg, SettingsKeys::kApp);
+        s.setValue(SettingsKeys::kSpeakerWatchEnabled, enabled);
+    });
 }
 
 void VideoPanel::generateNoise() {
@@ -134,12 +176,20 @@ void VideoPanel::refresh() {
         m_dashboard->setStmRightDetail(stmDetail(telem.stmRightState, telem.stmRightFaultMask, telem.stmRightAgeMs,
                                                   telem.stmRightUptimeMs, telem.stmRightStackFreeBytes));
 
-        // GPS/velocity-sensor/speaker/camera have no telemetry source yet
-        // (hardware not integrated) -- wire these up when that lands.
-        m_dashboard->setGpsOk(false);
-        m_dashboard->setVelocitySensorOk(false);
-        m_dashboard->setSpeakerOk(false);
-        m_dashboard->setCameraStreaming(false);
+        // GPS/velocity-sensor/speaker have no telemetry source yet (hardware
+        // not integrated) -- these reflect the user's click-to-toggle
+        // UI-preference only (see AppState/DashboardBar).
+        m_dashboard->setGpsWatchEnabled(m_state.gpsWatchEnabled.load());
+        m_dashboard->setVelocityWatchEnabled(m_state.velocityWatchEnabled.load());
+        m_dashboard->setSpeakerWatchEnabled(m_state.speakerWatchEnabled.load());
+
+        // Camera: enabled = user's on/off toggle; streaming = real
+        // connect/disconnect status published by VideoWorker into
+        // CameraState on transitions (see VideoWorker.h) -- read via the
+        // registry like every other status field in this method, not via a
+        // direct VideoWorker call.
+        m_dashboard->setCameraEnabled(m_state.cameraEnabled.load());
+        m_dashboard->setCameraStreaming(m_state.registry.get<CameraState>(m_state.ugv).streaming);
 
         m_hud->setThrottle(ctrl.throttle);
         m_hud->setBatteryLevel(
@@ -155,34 +205,41 @@ void VideoPanel::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::SmoothPixmapTransform, false);
 
-    if (m_state.whiteNoiseEnabled.load()) {
+    QImage frame;
+    const bool streaming = m_videoWorker.tryCurrentFrame(frame);
+
+    if (streaming && !frame.isNull()) {
+        // Letterbox: fill the panel with the offline background, then draw
+        // the frame centered and scaled to fit while preserving aspect
+        // ratio, exactly like a real camera monitor would.
+        p.fillRect(rect(), kOfflineBg);
+        QSize scaled = frame.size().scaled(size(), Qt::KeepAspectRatio);
+        QRect dest(QPoint(0, 0), scaled);
+        dest.moveCenter(rect().center());
+        p.drawImage(dest, frame);
+    } else if (m_state.whiteNoiseEnabled.load()) {
         // Stretch noise to fill widget — scaling gives chunky static look.
         p.drawImage(rect(), m_noise);
 
-        p.setPen(QColor(0, 0, 0, 60));
+        p.setPen(kScanlineColor);
         for (int y = 0; y < height(); y += 2)
             p.drawLine(0, y, width(), y);
     } else {
         // Keep the offline HUD readable without manufacturing a camera image.
-        p.fillRect(rect(), QColor(18, 18, 18));
+        p.fillRect(rect(), kOfflineBg);
     }
 
-    // "NO SIGNAL" badge
-    QFont f = font();
-    f.setPointSize(qRound(f.pointSize() * 1.5) + 2);
-    f.setBold(true);
-    p.setFont(f);
-    QFontMetrics fm(f);
-    QString msg = "NO SIGNAL";
-    QRect tr = fm.boundingRect(msg).adjusted(-12, -6, 12, 6);
-    tr.moveCenter(rect().center());
-    p.setPen(Qt::NoPen);
-    p.setBrush(QColor(0, 0, 0, 140));
-    p.drawRect(tr);
-    QColor noSignalColor = Theme::accent;
-    noSignalColor.setAlpha(210);
-    p.setPen(noSignalColor);
-    p.drawText(tr, Qt::AlignCenter, msg);
+    // Real sibling widget so it can be raised above m_hud -- see
+    // NoSignalBadge.h. repositionNoSignalBadge() also re-raises it, since a
+    // resize in between paints can otherwise let m_hud's own raise() put it
+    // back on top.
+    const auto status = m_videoWorker.status(streaming);
+    if (status != VideoWorker::Status::Streaming) {
+        m_noSignalBadge->setText(status == VideoWorker::Status::Connecting
+                                      ? "Loading..." : "NO SIGNAL");
+    }
+    m_noSignalBadge->setVisible(status != VideoWorker::Status::Streaming);
+    repositionNoSignalBadge();
 }
 
 void VideoPanel::resizeEvent(QResizeEvent* e) {
@@ -191,6 +248,7 @@ void VideoPanel::resizeEvent(QResizeEvent* e) {
     repositionCompass();
     repositionDashboard();
     repositionHud();
+    repositionNoSignalBadge();
 }
 
 void VideoPanel::wheelEvent(QWheelEvent* e) {
@@ -234,4 +292,16 @@ void VideoPanel::repositionHud() {
     if (!m_hud) return;
     m_hud->move((width() - m_hud->width()) / 2, (height() - m_hud->height()) / 2);
     m_hud->raise();
+}
+
+void VideoPanel::repositionNoSignalBadge() {
+    if (!m_noSignalBadge) return;
+    m_noSignalBadge->adjustSize();
+    m_noSignalBadge->move((width() - m_noSignalBadge->width()) / 2,
+                          (height() - m_noSignalBadge->height()) / 2);
+    // Must out-rank m_hud (see NoSignalBadge.h) -- re-raise every call
+    // rather than relying on construction order, since repositionHud()'s
+    // own raise() (called from resizeEvent) can otherwise put m_hud back on
+    // top between paints.
+    m_noSignalBadge->raise();
 }

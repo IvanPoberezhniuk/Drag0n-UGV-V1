@@ -59,6 +59,25 @@ void logDiagnosticLink(const char* name,
     }
 }
 
+// Diagnostic-frame and BMS-frame staleness share this threshold: it's the
+// point at which the underlying radio link (not just one message type)
+// is considered gone. 6s, not the firmware's nominal 1000ms send period --
+// bench logs show real inter-arrival gaps of 3-4s (CRSF frame contention
+// with the RPM/diagnostic frames sharing the link), so a tight 3000ms
+// threshold was firing every cycle and made the STM status icons flicker
+// green/red/green on every log line.
+constexpr long long kLinkLossTimeoutMs = 6000;
+
+// Per-motor RPM telemetry goes stale faster than the link itself is
+// declared lost -- this only blanks one field's display, not the STM
+// online indicator.
+constexpr long long kMotorRpmTimeoutMs = 1000;
+
+bool isStale(Clock::time_point last, long long thresholdMs) {
+    return last != Clock::time_point{} &&
+           std::chrono::duration_cast<Ms>(Clock::now() - last).count() > thresholdMs;
+}
+
 } // namespace
 
 SerialWorker::SerialWorker(AppState& state, const AppConfig& config)
@@ -71,8 +90,12 @@ void SerialWorker::start() {
     m_thread = std::thread([this]{ loop(); });
 }
 
-void SerialWorker::stop() {
+void SerialWorker::requestStop() {
     m_running = false;
+}
+
+void SerialWorker::stop() {
+    requestStop();
     if (m_thread.joinable()) m_thread.join();
 }
 
@@ -323,30 +346,18 @@ void SerialWorker::loop() {
                     }
                 }
                 for (size_t motor = 0; motor < t.motorRpmValid.size(); ++motor) {
-                    if (t.motorRpmLastReceived[motor] != Clock::time_point{} &&
-                        std::chrono::duration_cast<Ms>(
-                            Clock::now() - t.motorRpmLastReceived[motor]).count() > 1000) {
+                    if (isStale(t.motorRpmLastReceived[motor], kMotorRpmTimeoutMs)) {
                         t.motorRpmValid[motor] = false;
                     }
                 }
-                if (t.diagnosticLastReceived != Clock::time_point{} &&
-                    std::chrono::duration_cast<Ms>(
-                        Clock::now() - t.diagnosticLastReceived).count() > 6000) {
-                    // Diagnostic frame itself stopped arriving (radio link
-                    // dropped) -- telemetryAgeMs alone would otherwise stay
-                    // frozen at its last known value forever. Threshold is
-                    // 6s, not the firmware's nominal 1000ms send period --
-                    // bench logs show real inter-arrival gaps of 3-4s (CRSF
-                    // frame contention with the RPM/diagnostic frames
-                    // sharing the link), so a tight 3000ms threshold was
-                    // firing every cycle and made the STM status icons
-                    // flicker green/red/green on every log line.
+                // Diagnostic frame itself stopped arriving (radio link
+                // dropped) -- telemetryAgeMs alone would otherwise stay
+                // frozen at its last known value forever.
+                if (isStale(t.diagnosticLastReceived, kLinkLossTimeoutMs)) {
                     t.stmLeftOnline  = false;
                     t.stmRightOnline = false;
                 }
-                if (t.bmsLastReceived != Clock::time_point{} &&
-                    std::chrono::duration_cast<Ms>(
-                        Clock::now() - t.bmsLastReceived).count() > 6000) {
+                if (isStale(t.bmsLastReceived, kLinkLossTimeoutMs)) {
                     t.bmsConnected = false;
                     t.bmsValid = false;
                 }

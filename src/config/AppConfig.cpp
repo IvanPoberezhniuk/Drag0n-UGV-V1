@@ -65,6 +65,16 @@ AppConfig AppConfig::load(const std::string& path) {
             if (inp.contains("keyDecel"))        cfg.input.keyDecel        = inp["keyDecel"].get<float>();
         }
 
+        if (j.contains("video")) {
+            auto& v = j["video"];
+            if (v.contains("enabled"))          cfg.video.enabled          = v["enabled"].get<bool>();
+            if (v.contains("url"))              cfg.video.url              = v["url"].get<std::string>();
+            if (v.contains("reconnectDelayMs")) cfg.video.reconnectDelayMs = v["reconnectDelayMs"].get<uint32_t>();
+            if (v.contains("openTimeoutMs"))    cfg.video.openTimeoutMs    = v["openTimeoutMs"].get<uint32_t>();
+            if (v.contains("staleFrameMs"))     cfg.video.staleFrameMs     = v["staleFrameMs"].get<uint32_t>();
+            if (v.contains("preferTcp"))        cfg.video.preferTcp        = v["preferTcp"].get<bool>();
+        }
+
         spdlog::info("AppConfig: loaded '{}' — serial={} @{} baud, {}Hz",
             path, cfg.serial.port, cfg.serial.baudrate, cfg.control.rateHz);
     } catch (const std::exception& e) {

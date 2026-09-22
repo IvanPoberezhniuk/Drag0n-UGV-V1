@@ -14,5 +14,9 @@
         "lights":   4,
         "arm":      5,
         "estop":    6
+    },
+    "video": {
+        "enabled": true,
+        "url": "rtsp://roverpi.local:8554/ugv"
     }
 }

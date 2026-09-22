@@ -5,6 +5,7 @@
 #include "core/AppState.h"
 #include "config/AppConfig.h"
 #include "io/SerialWorker.h"
+#include "io/VideoWorker.h"
 #include "input/InputManager.h"
 #include "ui/IPanel.h"
 
@@ -19,7 +20,8 @@ class QDockWidget;
 class MainWindow : public QMainWindow {
 public:
     MainWindow(AppState& state, const AppConfig& config,
-               SerialWorker& worker, InputManager& inputManager,
+               SerialWorker& worker, VideoWorker& videoWorker,
+               InputManager& inputManager,
                QWidget* parent = nullptr);
 
 protected:
@@ -37,6 +39,7 @@ private:
     AppState&        m_state;
     const AppConfig& m_config;
     SerialWorker&    m_worker;
+    VideoWorker&     m_videoWorker;
     InputManager&    m_inputManager;
 
     ConnectionPanel* m_connection = nullptr;

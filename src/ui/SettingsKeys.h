@@ -7,6 +7,10 @@ namespace SettingsKeys {
     static constexpr const char* kFontSize     = "ui/fontSize";
     static constexpr const char* kWheelSize    = "ui/wheelSize";
     static constexpr const char* kWhiteNoise   = "ui/whiteNoise";
+    static constexpr const char* kCameraEnabled        = "ui/cameraEnabled";
+    static constexpr const char* kGpsWatchEnabled      = "ui/gpsWatchEnabled";
+    static constexpr const char* kVelocityWatchEnabled = "ui/velocityWatchEnabled";
+    static constexpr const char* kSpeakerWatchEnabled  = "ui/speakerWatchEnabled";
     static constexpr const char* kBaudRate     = "connection/baudrate";
     static constexpr const char* kGeometry     = "geometry";
     static constexpr const char* kWindowState  = "windowState";

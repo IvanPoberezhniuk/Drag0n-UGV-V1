@@ -37,7 +37,7 @@ DashboardBar::DashboardBar(QWidget* parent)
     m_espSvg       = loadSvgTemplate(":/icons/esp-status.svg");
     m_stmSvg       = loadSvgTemplate(":/icons/stm-status.svg");
 
-    m_blinkTimer.setInterval(33); // ~30fps, only runs while streaming
+    m_blinkTimer.setInterval(Theme::kUiRefreshMs); // only runs while streaming
     connect(&m_blinkTimer, &QTimer::timeout, this, [this]() { update(); });
 }
 
@@ -108,18 +108,23 @@ void DashboardBar::setLights(bool on) {
     update();
 }
 
-void DashboardBar::setGpsOk(bool ok) {
-    m_gpsOk = ok;
+void DashboardBar::setGpsWatchEnabled(bool enabled) {
+    m_gpsWatchEnabled = enabled;
     update();
 }
 
-void DashboardBar::setVelocitySensorOk(bool ok) {
-    m_velocitySensorOk = ok;
+void DashboardBar::setVelocityWatchEnabled(bool enabled) {
+    m_velocityWatchEnabled = enabled;
     update();
 }
 
-void DashboardBar::setSpeakerOk(bool ok) {
-    m_speakerOk = ok;
+void DashboardBar::setSpeakerWatchEnabled(bool enabled) {
+    m_speakerWatchEnabled = enabled;
+    update();
+}
+
+void DashboardBar::setCameraEnabled(bool enabled) {
+    m_cameraEnabled = enabled;
     update();
 }
 
@@ -180,47 +185,73 @@ void DashboardBar::paintEvent(QPaintEvent*) {
     p.drawRect(0, 0, W, H);
 
     // --- Left group: module status icons, health-only (no text). ---
-    // GPS/velocity-sensor/speaker/camera have no backend data source yet (no
-    // such hardware wired into telemetry) -- callers pass false/off until
-    // that lands. Non-critical modules show caution orange when down;
-    // critical ones (ESP/STM32 nodes) show red.
+    // Color scheme: amber = connected/on, red = genuine error, gray = "not
+    // important"/disabled. GPS/velocity/speaker have no backend data source
+    // at all (no such hardware wired into telemetry) -- they're honest
+    // UI-preference toggles with no fail state: gray+crossed when off
+    // (their permanent default), plain amber when on. Camera is the one
+    // module icon among the four with a real connected/not-connected
+    // signal: gray+crossed when the user disabled it, red when enabled but
+    // not streaming, amber blink when actually streaming. ESP/STM32 are not
+    // toggleable: amber online, red offline, never gray.
     struct StatusIcon {
         const char* cacheKey;
         const QByteArray* svg;
         QColor color;
         QString tooltip;
+        bool crossed = false;
     };
     // A touch of transparency on every icon color keeps the strip from
     // reading as harshly saturated against the video feed.
     auto soften = [](QColor c) { c.setAlpha(215); return c; };
-    const QColor okColor      = soften(Theme::successGreen);
-    const QColor warnColor    = soften(Theme::cautionOrange);
-    const QColor critColor    = soften(Theme::errorRed);
+    const QColor onColor   = soften(Theme::accent);
+    const QColor critColor = soften(Theme::errorRed);
+    // "Not important"/disabled gray, consistent with the dim gray already
+    // used below for inactive cruise/estop/lights.
+    const QColor offColor(120, 120, 120, 170);
+
+    const QString gpsStatus = m_gpsWatchEnabled ? "On" : "Off (click to enable)";
+    const QString velStatus = m_velocityWatchEnabled ? "On" : "Off (click to enable)";
+    const QString spkStatus = m_speakerWatchEnabled ? "On" : "Off (click to enable)";
+    const QString camStatus = !m_cameraEnabled ? "Off (click to enable)"
+                             : m_cameraStreaming ? "Streaming (click to disable)"
+                                                  : "No signal (click to disable)";
+
     StatusIcon statusIcons[7] = {
-        { "gps", &m_gpsSvg,      m_gpsOk            ? okColor : warnColor,
-          tooltipHtml("GPS Module", {{"Status", "Not integrated"}}) },
-        { "vel", &m_velocitySvg, m_velocitySensorOk ? okColor : warnColor,
-          tooltipHtml("Velocity Sensor", {{"Status", "Not integrated"}}) },
-        { "spk", &m_speakerSvg,  m_speakerOk        ? okColor : warnColor,
-          tooltipHtml("Speaker", {{"Status", "Not wired up"}}) },
-        { "cam", &m_cameraSvg,   m_cameraStreaming  ? soften(cameraBlinkColor()) : warnColor,
-          tooltipHtml("Camera", {{"Status", m_cameraStreaming ? "Streaming" : "Idle"}}) },
-        { "esp", &m_espSvg,      m_espOk            ? okColor : critColor,
+        { "gps", &m_gpsSvg,      m_gpsWatchEnabled      ? onColor : offColor,
+          tooltipHtml("GPS Module", {{"Status", gpsStatus}}), !m_gpsWatchEnabled },
+        { "vel", &m_velocitySvg, m_velocityWatchEnabled ? onColor : offColor,
+          tooltipHtml("Velocity Sensor", {{"Status", velStatus}}), !m_velocityWatchEnabled },
+        { "spk", &m_speakerSvg,  m_speakerWatchEnabled  ? onColor : offColor,
+          tooltipHtml("Speaker", {{"Status", spkStatus}}), !m_speakerWatchEnabled },
+        { "cam", &m_cameraSvg,
+          !m_cameraEnabled ? offColor : (m_cameraStreaming ? soften(cameraBlinkColor()) : critColor),
+          tooltipHtml("Camera", {{"Status", camStatus}}), !m_cameraEnabled },
+        { "esp", &m_espSvg,      m_espOk            ? onColor : critColor,
           tooltipHtml("ESP32 Controller",
               DetailRows{{"Status", m_espOk ? "Online" : "Offline"}} + m_espDetail) },
-        { "stmL", &m_stmSvg,     m_stmLeftOk        ? okColor : critColor,
+        { "stmL", &m_stmSvg,     m_stmLeftOk        ? onColor : critColor,
           tooltipHtml("STM32 Left Node",
               DetailRows{{"Status", m_stmLeftOk ? "Online" : "Offline"}} + m_stmLeftDetail) },
-        { "stmR", &m_stmSvg,     m_stmRightOk       ? okColor : critColor,
+        { "stmR", &m_stmSvg,     m_stmRightOk       ? onColor : critColor,
           tooltipHtml("STM32 Right Node",
               DetailRows{{"Status", m_stmRightOk ? "Online" : "Offline"}} + m_stmRightDetail) },
     };
     {
         int sx = kGroupMargin;
-        for (const auto& icon : statusIcons) {
+        for (int i = 0; i < 7; ++i) {
+            const auto& icon = statusIcons[i];
             QRect box(sx, qRound((H - kIconSize) / 2.0), kIconSize, kIconSize);
             p.drawPixmap(box, coloredIcon(*icon.svg, icon.cacheKey, icon.color, kIconSize));
-            m_hover.add(box.adjusted(-kHoverPad, -kHoverPad, kHoverPad, kHoverPad), icon.tooltip);
+            if (icon.crossed) {
+                QPen pen(offColor.lighter(140));
+                pen.setWidth(2);
+                p.setPen(pen);
+                p.drawLine(box.topLeft(), box.bottomRight());
+            }
+            const QRect hitBox = box.adjusted(-kHoverPad, -kHoverPad, kHoverPad, kHoverPad);
+            m_hover.add(hitBox, icon.tooltip);
+            if (i < 4) m_toggleRects[i] = hitBox; // gps, velocity, speaker, camera
             sx += kIconSize + kItemGap;
         }
     }
@@ -265,4 +296,33 @@ void DashboardBar::mouseMoveEvent(QMouseEvent* e) {
 
 void DashboardBar::leaveEvent(QEvent*) {
     m_hover.handleLeave();
+}
+
+void DashboardBar::mousePressEvent(QMouseEvent* e) {
+    m_pressedToggleIndex = -1;
+    if (e->button() == Qt::LeftButton) {
+        for (int i = 0; i < 4; ++i) {
+            if (m_toggleRects[i].contains(e->pos())) {
+                m_pressedToggleIndex = i;
+                break;
+            }
+        }
+    }
+    QWidget::mousePressEvent(e);
+}
+
+void DashboardBar::mouseReleaseEvent(QMouseEvent* e) {
+    const int pressed = m_pressedToggleIndex;
+    m_pressedToggleIndex = -1;
+    if (e->button() == Qt::LeftButton && pressed >= 0 &&
+        m_toggleRects[pressed].contains(e->pos())) {
+        switch (pressed) {
+            case 0: emit gpsWatchToggled(!m_gpsWatchEnabled); break;
+            case 1: emit velocityWatchToggled(!m_velocityWatchEnabled); break;
+            case 2: emit speakerWatchToggled(!m_speakerWatchEnabled); break;
+            case 3: emit cameraToggled(!m_cameraEnabled); break;
+            default: break;
+        }
+    }
+    QWidget::mouseReleaseEvent(e);
 }

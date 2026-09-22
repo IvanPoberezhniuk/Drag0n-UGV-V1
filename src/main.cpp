@@ -17,9 +17,11 @@
 #include "core/TelemetryState.h"
 #include "core/SafetyState.h"
 #include "core/ConnectionState.h"
+#include "core/CameraState.h"
 #include "core/LogBuffer.h"
 #include "config/AppConfig.h"
 #include "io/SerialWorker.h"
+#include "io/VideoWorker.h"
 #include "input/InputManager.h"
 #include "input/KeyboardInput.h"
 #include "input/XInputGamepad.h"
@@ -109,6 +111,14 @@ int main(int argc, char** argv) {
         state.wheelSizePercent.store(s.value(SettingsKeys::kWheelSize, 100).toInt());
         state.whiteNoiseEnabled.store(
             s.value(SettingsKeys::kWhiteNoise, true).toBool());
+        state.cameraEnabled.store(
+            s.value(SettingsKeys::kCameraEnabled, true).toBool());
+        state.gpsWatchEnabled.store(
+            s.value(SettingsKeys::kGpsWatchEnabled, false).toBool());
+        state.velocityWatchEnabled.store(
+            s.value(SettingsKeys::kVelocityWatchEnabled, false).toBool());
+        state.speakerWatchEnabled.store(
+            s.value(SettingsKeys::kSpeakerWatchEnabled, false).toBool());
         for (int i = 0; i < KeyBindings::Count; ++i) {
             auto k1 = QString(SettingsKeys::kBindKey1Fmt).arg(i);
             auto k2 = QString(SettingsKeys::kBindKey2Fmt).arg(i);
@@ -123,6 +133,7 @@ int main(int argc, char** argv) {
     state.registry.emplace<SafetyState>(state.ugv);
     state.registry.emplace<ConnectionState>(state.ugv);
     state.registry.get<ConnectionState>(state.ugv).baudrate = state.serialBaudrate;
+    state.registry.emplace<CameraState>(state.ugv);
 
     auto uiSink = std::make_shared<UiLogSink>(state.logs);
     uiSink->set_pattern("[%T] %v");
@@ -130,6 +141,13 @@ int main(int argc, char** argv) {
     spdlog::default_logger()->sinks().push_back(uiSink);
 
     SerialWorker  worker(state, config);
+    VideoWorker   videoWorker(state, config.video);
+    // AppState.cameraEnabled (persisted user preference, default on) is the
+    // authoritative source for whether the feed should be live -- sync the
+    // worker to it now rather than relying solely on config.video.enabled's
+    // startup-only default, so a saved "camera off" preference actually
+    // takes effect.
+    videoWorker.setEnabled(state.cameraEnabled.load());
     InputManager  inputManager;
     inputManager.addSource(std::make_unique<KeyboardInput>(state.keyBindings, config.input));
     inputManager.addSource(std::make_unique<XInputGamepad>(0, config.input));
@@ -140,10 +158,11 @@ int main(int argc, char** argv) {
         state.registry.get<ConnectionState>(state.ugv).portName = config.serial.port;
     }
 
-    MainWindow window(state, config, worker, inputManager);
+    MainWindow window(state, config, worker, videoWorker, inputManager);
     window.showMaximized();
 
     worker.start();
+    videoWorker.start();
     spdlog::info("UGV Control Station started — {}Hz worker, Qt6 UI", config.control.rateHz);
 
     int ret = app.exec();

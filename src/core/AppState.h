@@ -24,6 +24,17 @@ struct AppState {
     InputType          activeInput      = InputType::Keyboard;
     std::atomic<int>   wheelSizePercent {100};
     std::atomic<bool>  whiteNoiseEnabled {true};
+
+    // Dashboard status-icon click-to-toggle state (see DashboardBar). Camera
+    // has real effect (pauses/resumes VideoWorker); GPS/velocity/speaker have
+    // no telemetry source behind them at all yet, so their toggle is
+    // UI-preference-only -- default off, which is their permanent honest
+    // state until that hardware lands.
+    std::atomic<bool> cameraEnabled        {true};
+    std::atomic<bool> gpsWatchEnabled      {false};
+    std::atomic<bool> velocityWatchEnabled {false};
+    std::atomic<bool> speakerWatchEnabled  {false};
+
     LogBuffer logs;
 
     KeyBindings keyBindings;

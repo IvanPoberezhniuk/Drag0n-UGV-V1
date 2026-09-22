@@ -13,15 +13,28 @@ Install Qt6 and the MinGW toolchain via MSYS2 (one-time):
 pacman -S mingw-w64-ucrt-x86_64-gcc \
           mingw-w64-ucrt-x86_64-qt6-base \
           mingw-w64-ucrt-x86_64-qt6-declarative \
-          mingw-w64-ucrt-x86_64-ninja
+          mingw-w64-ucrt-x86_64-ninja \
+          mingw-w64-ucrt-x86_64-ffmpeg \
+          mingw-w64-ucrt-x86_64-pkgconf
 ```
 
 `spdlog`, `nlohmann_json`, and `entt` are fetched automatically by CMake
 (`FetchContent`) — no separate install step.
 
+The live camera panel (`VideoPanel`/`VideoWorker`) decodes the Raspberry
+Pi's RTSP feed via raw FFmpeg (libavformat/avcodec/swscale), found through
+`pkg-config` — the `mingw-w64-ucrt-x86_64-ffmpeg` and
+`mingw-w64-ucrt-x86_64-pkgconf` packages above are required to configure
+the project, not optional extras.
+
 ---
 
 ## Build
+
+`build/` is the one and only build directory for this project — configure
+and build into it, don't create `build_cmake/`, `build_mingw/`,
+`build_verify/`, or any other variant. If `build/` is in a broken state,
+delete and reconfigure it rather than starting a new directory.
 
 Qt's host tools (rcc, moc, qmlimportscanner, ...) need their DLLs on `PATH`
 at configure and build time, so put `C:\msys64\ucrt64\bin` on `PATH` first.
@@ -29,7 +42,7 @@ at configure and build time, so put `C:\msys64\ucrt64\bin` on `PATH` first.
 ### Configure (first time or after changing CMakeLists.txt)
 
 ```bash
-cmake -G Ninja -B build_cmake ^
+cmake -G Ninja -B build ^
   -DCMAKE_PREFIX_PATH=C:/msys64/ucrt64 ^
   -DCMAKE_CXX_COMPILER=C:/msys64/ucrt64/bin/g++.exe ^
   -DCMAKE_MAKE_PROGRAM=C:/msys64/ucrt64/bin/ninja.exe ^
@@ -39,20 +52,20 @@ cmake -G Ninja -B build_cmake ^
 ### Build
 
 ```bash
-cmake --build build_cmake
+cmake --build build
 ```
 
 ### Debug build
 
 ```bash
-cmake -B build_cmake -DCMAKE_BUILD_TYPE=Debug
-cmake --build build_cmake
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
 ```
 
 ### Clean build artifacts
 
 ```bash
-cmake --build build_cmake --target clean
+cmake --build build --target clean
 ```
 
 ---
@@ -60,18 +73,18 @@ cmake --build build_cmake --target clean
 ## Run
 
 ```bash
-build_cmake\UGVControlStation.exe
+build\UGVControlStation.exe
 ```
 
 The Logs panel displays live UGV diagnostic telemetry relayed from ESP32
 through XR4 and Nomad. The same entries are persisted beside the executable in
-`build_cmake\ugv-control.log` (1 MB rotating file with three backups), so the
+`build\ugv-control.log` (1 MB rotating file with three backups), so the
 latest diagnostic session can be shared without screenshots.
 
 ### With a specific config file
 
 ```bash
-build_cmake\UGVControlStation.exe --config path\to\config.json
+build\UGVControlStation.exe --config path\to\config.json
 ```
 
 ---
@@ -79,7 +92,7 @@ build_cmake\UGVControlStation.exe --config path\to\config.json
 ## Deploy (copy Qt DLLs next to the exe)
 
 ```bash
-windeployqt6 build_cmake\UGVControlStation.exe
+windeployqt6 build\UGVControlStation.exe
 ```
 
 After this the exe can be run directly without the MSYS2 `bin` on `PATH`.
@@ -88,7 +101,7 @@ After this the exe can be run directly without the MSYS2 `bin` on `PATH`.
 
 ## IntelliSense (VS Code)
 
-`compile_commands.json` is generated automatically in `build_cmake/` on every
+`compile_commands.json` is generated automatically in `build/` on every
 configure (`CMAKE_EXPORT_COMPILE_COMMANDS=ON` is set in `CMakeLists.txt`), and
 `.vscode/c_cpp_properties.json` already points there.
 

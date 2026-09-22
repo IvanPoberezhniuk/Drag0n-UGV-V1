@@ -27,13 +27,28 @@ public:
     void setEstop(bool active);
     void setLights(bool on);
 
-    // Module status (left group). GPS/velocity-sensor/speaker/camera have no
-    // backend data source yet (no such hardware wired into telemetry) --
-    // callers pass false until that lands; the UI is complete and ready.
-    void setGpsOk(bool ok);
-    void setVelocitySensorOk(bool ok);
-    void setSpeakerOk(bool ok);
+    // Module status (left group).
+    //
+    // GPS/velocity-sensor/speaker have no backend data source at all yet (no
+    // such hardware wired into telemetry) -- these three are honest
+    // UI-preference toggles: "enabled" just means the operator turned the
+    // icon on, there is no real ok/fail signal behind it. Click the icon to
+    // toggle (see gpsWatchToggled etc. below); off is gray+crossed, on is
+    // plain amber, no red state.
+    void setGpsWatchEnabled(bool enabled);
+    void setVelocityWatchEnabled(bool enabled);
+    void setSpeakerWatchEnabled(bool enabled);
+
+    // Camera is the one module-status icon with a real connected/not signal
+    // (VideoWorker/CameraState). setCameraEnabled reflects the user's
+    // on/off toggle (gray+crossed when off); setCameraStreaming reflects
+    // actual stream health while enabled (amber blink = streaming, red = no
+    // signal).
+    void setCameraEnabled(bool enabled);
     void setCameraStreaming(bool streaming); // true = actively sharing an image
+
+    // ESP/STM32 nodes are not part of the click-to-toggle feature -- amber
+    // when online, red when offline, never gray, not clickable.
     void setEspOk(bool ok);
     void setStmLeftOk(bool ok);
     void setStmRightOk(bool ok);
@@ -46,10 +61,21 @@ public:
     void setStmLeftDetail(const DetailRows& rows);
     void setStmRightDetail(const DetailRows& rows);
 
+signals:
+    // Emitted on release of a completed click (press and release both
+    // landing on the same icon) for each of the four toggleable
+    // module-status icons. Argument is the new (post-toggle) state.
+    void cameraToggled(bool enabled);
+    void gpsWatchToggled(bool enabled);
+    void velocityWatchToggled(bool enabled);
+    void speakerWatchToggled(bool enabled);
+
 protected:
     void paintEvent(QPaintEvent*) override;
     void mouseMoveEvent(QMouseEvent* e) override;
     void leaveEvent(QEvent* e) override;
+    void mousePressEvent(QMouseEvent* e) override;
+    void mouseReleaseEvent(QMouseEvent* e) override;
 
 private:
     bool  m_cruiseEnabled = false;
@@ -57,13 +83,20 @@ private:
     bool  m_estopActive   = false;
     bool  m_lightsOn      = false;
 
-    bool m_gpsOk            = false;
-    bool m_velocitySensorOk = false;
-    bool m_speakerOk        = false;
-    bool m_cameraStreaming  = false;
-    bool m_espOk            = false;
-    bool m_stmLeftOk        = false;
-    bool m_stmRightOk       = false;
+    bool m_gpsWatchEnabled      = false;
+    bool m_velocityWatchEnabled = false;
+    bool m_speakerWatchEnabled  = false;
+    bool m_cameraEnabled        = true;
+    bool m_cameraStreaming      = false;
+    bool m_espOk                = false;
+    bool m_stmLeftOk            = false;
+    bool m_stmRightOk           = false;
+
+    // Click hit-rects for the first four (toggleable) status icons, in the
+    // same gps/velocity/speaker/camera order as statusIcons[] in
+    // paintEvent -- rebuilt every paintEvent alongside the hover rects.
+    QRect m_toggleRects[4];
+    int   m_pressedToggleIndex = -1;
 
     DetailRows m_espDetail;
     DetailRows m_stmLeftDetail;

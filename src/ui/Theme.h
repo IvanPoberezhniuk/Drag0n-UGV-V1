@@ -37,6 +37,10 @@ inline QString pushButtonSS(const QColor& bg, const QColor& bgHover,
         .arg(bg.name(), text.name(), bgHover.name(), ht.name());
 }
 
+// Shared UI animation-timer interval (~30fps), used by every HUD element
+// that repaints on a QTimer while live (LiveDot, DashboardBar).
+constexpr int kUiRefreshMs = 33;
+
 // Ease-in-out pulse value (0..1) for a periodMs-long cycle at elapsedMs --
 // shared by every HUD element that "breathes" while live (LiveDot,
 // DashboardBar's camera-streaming indicator).

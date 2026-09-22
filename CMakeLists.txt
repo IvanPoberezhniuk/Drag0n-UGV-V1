@@ -13,6 +13,19 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Svg)
 
 qt_standard_project_setup()
 
+# Decode-only FFmpeg for the RTSP live-video feed (src/io/VideoWorker.*).
+# QtMultimedia/libvlc are deliberately not used -- see VideoWorker.h for
+# why (low-level rtsp_transport/fflags/low_delay knobs, LGPL-clean
+# decode-only linking). Requires the mingw-w64-ucrt-x86_64-ffmpeg pacman
+# package (see README.md).
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+    libavformat
+    libavcodec
+    libavutil
+    libswscale
+)
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -66,6 +79,8 @@ qt_add_executable(UGVControlStation WIN32
     src/ui/widgets/HoverInfoIcon.h
     src/ui/widgets/LiveDot.cpp
     src/ui/widgets/LiveDot.h
+    src/ui/widgets/NoSignalBadge.cpp
+    src/ui/widgets/NoSignalBadge.h
     src/ui/panels/ConnectionPanel.cpp
     src/ui/panels/ControlPanel.cpp
     src/ui/panels/TelemetryPanel.cpp
@@ -79,6 +94,7 @@ qt_add_executable(UGVControlStation WIN32
     src/services/ControlService.cpp
     src/io/SerialPort.cpp
     src/io/SerialWorker.cpp
+    src/io/VideoWorker.cpp
     src/crsf/CrsfPacket.cpp
     src/input/KeyboardInput.cpp
     src/input/XInputGamepad.cpp
@@ -96,6 +112,7 @@ target_link_libraries(UGVControlStation PRIVATE
     spdlog::spdlog
     nlohmann_json::nlohmann_json
     EnTT::EnTT
+    PkgConfig::FFMPEG
     kernel32
     user32
     winmm

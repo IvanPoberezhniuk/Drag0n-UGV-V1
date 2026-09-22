@@ -37,6 +37,20 @@ struct AppConfig {
         float keyDecel        = 10.0f;
     } input;
 
+    // RTSP live-video feed from the Raspberry Pi (rpicam-vid -> ffmpeg ->
+    // MediaMTX). Decoded on VideoWorker's own thread -- see
+    // src/io/VideoWorker.h. Failure (Pi offline, wrong URL, mid-session
+    // drop, hung-but-connected encoder) always degrades to VideoPanel's
+    // existing "NO SIGNAL" fallback, never blocks the UI or control loop.
+    struct VideoCfg {
+        bool        enabled          = true;
+        std::string url              = "rtsp://roverpi.local:8554/ugv";
+        uint32_t    reconnectDelayMs = 2000;
+        uint32_t    openTimeoutMs    = 3000;
+        uint32_t    staleFrameMs     = 1500;
+        bool        preferTcp        = true;
+    } video;
+
     static AppConfig load(const std::string& path);
     static AppConfig defaults();
 };

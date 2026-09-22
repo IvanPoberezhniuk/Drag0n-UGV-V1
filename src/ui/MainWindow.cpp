@@ -23,12 +23,14 @@
 #include <mutex>
 
 MainWindow::MainWindow(AppState& state, const AppConfig& config,
-                       SerialWorker& worker, InputManager& inputManager,
+                       SerialWorker& worker, VideoWorker& videoWorker,
+                       InputManager& inputManager,
                        QWidget* parent)
     : QMainWindow(parent)
     , m_state(state)
     , m_config(config)
     , m_worker(worker)
+    , m_videoWorker(videoWorker)
     , m_inputManager(inputManager)
 {
     setWindowTitle("UGV Control Station");
@@ -40,7 +42,7 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
     m_telemetry  = new TelemetryPanel(m_state, this);
     m_logs       = new LogsPanel(m_state, this);
     m_legend     = new LegendPanel(m_state, this);
-    m_video      = new VideoPanel(m_state, this);
+    m_video      = new VideoPanel(m_state, m_videoWorker, this);
 
     setCentralWidget(m_video);
 
@@ -179,6 +181,13 @@ void MainWindow::closeEvent(QCloseEvent* e) {
     s.setValue(SettingsKeys::kWindowState, saveState());
 
     m_timer.stop();
+    // Signal both workers to unwind before joining either -- each stop()
+    // joins, and its blocking call can legitimately take a few seconds to
+    // notice (wedged serial port / RTSP socket). Requesting both first
+    // caps the total wait at max(worker), not sum(worker).
+    m_worker.requestStop();
+    m_videoWorker.requestStop();
     m_worker.stop();
+    m_videoWorker.stop();
     e->accept();
 }

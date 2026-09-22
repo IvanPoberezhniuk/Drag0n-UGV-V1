@@ -19,6 +19,12 @@ public:
     void start();
     void stop();
 
+    // Signals the loop to unwind without joining -- see
+    // MainWindow::closeEvent, which requestStop()s every worker before
+    // join()ing any of them so the total shutdown wait is bounded by the
+    // slowest worker instead of their sum.
+    void requestStop();
+
     void requestConnect(const std::string& port, uint32_t baudrate);
     void requestDisconnect();
 
