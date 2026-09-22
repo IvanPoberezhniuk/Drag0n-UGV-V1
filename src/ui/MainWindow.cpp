@@ -8,6 +8,7 @@
 #include "ui/SettingsDialog.h"
 #include "ui/SettingsKeys.h"
 #include <QDockWidget>
+#include <QAbstractButton>
 #include <QCloseEvent>
 #include <QEvent>
 #include <QMenuBar>
@@ -50,6 +51,11 @@ MainWindow::MainWindow(AppState& state, const AppConfig& config,
         dock->setWidget(w);
         dock->setAllowedAreas(Qt::AllDockWidgetAreas);
         addDockWidget(area, dock);
+        // Title bar float/close buttons are QAbstractButtons parented directly
+        // on the dock (not on its content widget) -- give them a pointer
+        // cursor so they read as clickable like the rest of the app's icons.
+        for (auto* btn : dock->findChildren<QAbstractButton*>(QString(), Qt::FindDirectChildrenOnly))
+            btn->setCursor(Qt::PointingHandCursor);
         return dock;
     };
 

@@ -75,6 +75,17 @@ int main(int argc, char** argv) {
 
     app.setStyle(new AppStyle(QStyleFactory::create("Fusion")));
     app.setPalette(Theme::darkPalette());
+    // Fusion clamps the dock title bar buttons' height to the title bar's
+    // available space while keeping their sizeHint width, which can make
+    // them read as a rectangle instead of a square -- pin explicit equal
+    // dimensions so both buttons render as fixed 18x18 squares.
+    app.setStyleSheet(
+        "QDockWidget::close-button, QDockWidget::float-button {"
+        "  icon-size: 14px;"
+        "  width: 18px;"
+        "  height: 18px;"
+        "  padding: 0px;"
+        "}");
 
     auto consoleSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     consoleSink->set_pattern("[%T.%e] [%^%l%$] %v");
