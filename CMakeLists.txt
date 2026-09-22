@@ -53,7 +53,17 @@ qt_add_executable(UGVControlStation WIN32
     src/ui/CompassBar.h
     src/ui/DashboardBar.cpp
     src/ui/DashboardBar.h
+    src/ui/HudCrosshair.cpp
+    src/ui/HudCrosshair.h
     src/ui/widgets/ToggleSwitch.cpp
+    src/ui/widgets/CheckableComboBox.cpp
+    src/ui/widgets/CheckableComboBox.h
+    src/ui/widgets/HudTooltip.cpp
+    src/ui/widgets/HudTooltip.h
+    src/ui/widgets/HoverInfoIcon.cpp
+    src/ui/widgets/HoverInfoIcon.h
+    src/ui/widgets/LiveDot.cpp
+    src/ui/widgets/LiveDot.h
     src/ui/panels/ConnectionPanel.cpp
     src/ui/panels/ControlPanel.cpp
     src/ui/panels/TelemetryPanel.cpp
