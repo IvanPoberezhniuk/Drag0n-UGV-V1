@@ -49,6 +49,7 @@ AppConfig AppConfig::load(const std::string& path) {
             loadCh("lights",   cfg.channels.lights);
             loadCh("arm",      cfg.channels.arm);
             loadCh("estop",    cfg.channels.estop);
+            loadCh("clearFault", cfg.channels.clearFault);
         }
 
         if (j.contains("ui")) {

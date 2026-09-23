@@ -41,6 +41,18 @@ void apply(ControlState& ctrl, SafetyState& safety, uint32_t failsafeTimeoutMs) 
         ctrl.steering = 0.0f;
         ctrl.armed    = false;
     }
+
+    // Clear-fault is a one-shot pulse on its RC channel: hold it high just
+    // long enough for ESP32/STM32 to see it, then drop it automatically so
+    // it can't sit high and block a later ARM (see uart_control_service.c's
+    // CLEAR_FAULT branch, which takes priority over ARM in the same frame).
+    if (ctrl.clearFault) {
+        ctrl.throttle = 0.0f;
+        ctrl.steering = 0.0f;
+        if (std::chrono::duration_cast<Ms>(now - ctrl.clearFaultSetAt).count() > 250) {
+            ctrl.clearFault = false;
+        }
+    }
 }
 
 } // namespace SafetyService

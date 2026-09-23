@@ -27,6 +27,7 @@ RcChannels mapChannels(const ControlState& ctrl,
     rc.ch[ch.lights - 1] = ctrl.lightsOn ? CH_MAX : CH_MIN;
     rc.ch[ch.arm    - 1] = ctrl.armed    ? CH_MAX : CH_MIN;
     rc.ch[ch.estop  - 1] = ctrl.estop    ? CH_MAX : CH_MIN;
+    rc.ch[ch.clearFault - 1] = ctrl.clearFault ? CH_MAX : CH_MIN;
     return rc;
 }
 

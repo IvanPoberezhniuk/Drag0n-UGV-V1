@@ -17,6 +17,7 @@ private:
 
     QPushButton*  m_armBtn         = nullptr;
     QPushButton*  m_estopBtn       = nullptr;
+    QPushButton*  m_clearFaultBtn  = nullptr;
     QLabel*       m_latchLabel     = nullptr;
     QRadioButton* m_mode1          = nullptr;
     QRadioButton* m_mode2          = nullptr;

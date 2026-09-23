@@ -75,6 +75,7 @@ void InputManager::poll(AppState& state) {
 
     // OR all button events
     bool arm = false, disarm = false, estop = false, toggleLights = false;
+    bool clearFault = false;
     bool toggleCruise = false, manualOverride = false;
     int  setDriveMode = 0;
     int  cruiseAdjust = 0;
@@ -82,6 +83,7 @@ void InputManager::poll(AppState& state) {
         arm            |= f.arm;
         disarm         |= f.disarm;
         estop          |= f.estop;
+        clearFault     |= f.clearFault;
         toggleLights   |= f.toggleLights;
         toggleCruise   |= f.toggleCruise;
         manualOverride |= f.manualOverride;
@@ -129,6 +131,11 @@ void InputManager::poll(AppState& state) {
         ctrl.estop  = true;
         ctrl.armed  = false;
         spdlog::warn("Input: EMERGENCY STOP — re-arm to resume");
+    }
+    if (clearFault) {
+        ctrl.clearFault      = true;
+        ctrl.clearFaultSetAt = now;
+        spdlog::info("Input: CLEAR FAULT requested");
     }
     if (toggleLights) {
         ctrl.lightsOn = !ctrl.lightsOn;

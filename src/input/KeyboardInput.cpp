@@ -100,6 +100,7 @@ InputFrame KeyboardInput::poll() {
         else         f.disarm = true;
     }
     if (m_edge.rising(KB::EStop,        isDown(b[KB::EStop])))        f.estop        = true;
+    if (m_edge.rising(KB::ClearFault,   isDown(b[KB::ClearFault])))   f.clearFault   = true;
     if (m_edge.rising(KB::ToggleLights, isDown(b[KB::ToggleLights]))) f.toggleLights = true;
     if (m_edge.rising(KB::DriveMode1,   isDown(b[KB::DriveMode1])))   f.setDriveMode = 1;
     if (m_edge.rising(KB::DriveMode2,   isDown(b[KB::DriveMode2])))   f.setDriveMode = 2;

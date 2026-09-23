@@ -10,6 +10,8 @@ struct ControlState {
     float     steering  = 0.0f;
     bool      armed     = false;
     bool      estop     = false;
+    bool      clearFault = false;
+    std::chrono::steady_clock::time_point clearFaultSetAt{};
     bool      lightsOn  = false;
     bool      cruiseEnabled = false;
     float     cruiseSpeed   = 0.5f; // fraction of full throttle, adjustable in 5% steps

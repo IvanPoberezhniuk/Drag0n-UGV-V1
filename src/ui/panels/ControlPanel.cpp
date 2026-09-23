@@ -2,6 +2,7 @@
 #include "core/ControlState.h"
 #include "core/SafetyState.h"
 #include "core/StateSnapshot.h"
+#include "core/ChronoTypes.h"
 #include "ui/Theme.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -41,6 +42,13 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
     m_latchLabel->setStyleSheet(Theme::colorSS(Theme::cautionOrange));
     m_latchLabel->hide();
     layout->addWidget(m_latchLabel);
+
+    // STM32 motor-node FAULT (e.g. after a command-link dropout) latches
+    // until this is sent -- clearing it never re-arms by itself, matching
+    // safety.c's two-step design.
+    m_clearFaultBtn = new QPushButton("Clear Motor Fault", this);
+    m_clearFaultBtn->setMinimumHeight(26);
+    layout->addWidget(m_clearFaultBtn);
 
     // Drive mode
     auto* modeRow = new QHBoxLayout;
@@ -84,6 +92,14 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
         ctrl.armed          = false;
         safety.estopLatched = true;
         spdlog::warn("UI: EMERGENCY STOP");
+    });
+
+    connect(m_clearFaultBtn, &QPushButton::clicked, this, [this]() {
+        std::lock_guard<std::mutex> lk(m_state.registryMutex);
+        auto& ctrl = m_state.registry.get<ControlState>(m_state.ugv);
+        ctrl.clearFault    = true;
+        ctrl.clearFaultSetAt = Clock::now();
+        spdlog::info("UI: CLEAR FAULT requested");
     });
 
     connect(modeGroup, &QButtonGroup::idClicked, this, [this](int id) {

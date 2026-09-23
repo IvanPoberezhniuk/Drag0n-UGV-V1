@@ -23,6 +23,7 @@ struct AppConfig {
         int lights   = 4;
         int arm      = 5;
         int estop    = 6;
+        int clearFault = 7;
     } channels;
 
     struct UiCfg {

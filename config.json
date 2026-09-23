@@ -13,7 +13,8 @@
         "mode":     3,
         "lights":   4,
         "arm":      5,
-        "estop":    6
+        "estop":    6,
+        "clearFault": 7
     },
     "video": {
         "enabled": true,

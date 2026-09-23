@@ -8,6 +8,7 @@ struct InputFrame {
     bool  arm          = false;
     bool  disarm       = false;
     bool  estop        = false;
+    bool  clearFault   = false;
     bool  toggleLights = false;
     int   setDriveMode = 0;      // 0 = no change, 1–3 = set
 

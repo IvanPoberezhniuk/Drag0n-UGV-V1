@@ -137,6 +137,12 @@ std::vector<LegendPanel::Entry> LegendPanel::buildKeyboardEntries(int K, int G, 
     }});
 
     entries.push_back({K + G + 4, [this, K, AX](QPainter& p, int x, int y) {
+        drawKey(p, {(qreal)x, (qreal)y, (qreal)K, (qreal)K}, "R");
+        p.setPen(kDimText);
+        p.drawText(x + AX, y + K/2 + 4, "Clear motor fault");
+    }});
+
+    entries.push_back({K + G + 4, [this, K, AX](QPainter& p, int x, int y) {
         drawKey(p, {(qreal)x, (qreal)y, (qreal)K, (qreal)K}, "C");
         p.setPen(kDimText);
         p.drawText(x + AX, y + K/2 + 4, "Toggle cruise");
