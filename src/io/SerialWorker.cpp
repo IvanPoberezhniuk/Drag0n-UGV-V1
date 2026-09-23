@@ -207,6 +207,13 @@ void SerialWorker::readAndParse() {
 
     m_parser.feed(tmp, n,
         [this](const CrsfFrameParser::LinkStats& ls) {
+            auto sinceLog = std::chrono::duration_cast<Ms>(
+                Clock::now() - m_lastLinkStatsLog).count();
+            if (m_lastLinkStatsLog == Clock::time_point{} || sinceLog > 1000) {
+                spdlog::info("LinkStats: rssi1={} rssi2={} lq={}",
+                             ls.rssi1, ls.rssi2, ls.lq);
+                m_lastLinkStatsLog = Clock::now();
+            }
             std::lock_guard<std::mutex> lk(m_state.registryMutex);
             auto& t    = m_state.registry.get<TelemetryState>(m_state.ugv);
             t.rssi1    = ls.rssi1;
