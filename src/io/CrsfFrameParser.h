@@ -10,7 +10,10 @@
 
 class CrsfFrameParser {
 public:
-    struct LinkStats    { uint8_t rssi1, rssi2, lq; };
+    // ExpressLRS sends uplink RSSI as a signed dBm value directly (not the
+    // TBS/original-CRSF "unsigned magnitude, negate to get dBm" convention
+    // -- a raw byte like 228 is -28 dBm as int8_t, not -228 dBm).
+    struct LinkStats    { int8_t rssi1, rssi2; uint8_t lq; };
     struct BatterySensor{ float voltage; };
     struct RpmSensor {
         uint8_t sourceId = 0;
@@ -164,7 +167,8 @@ private:
                   const OnRpm& onRpm, const OnDiagnostic& onDiagnostic,
                   const OnBms& onBms) {
         if (type == CRSF_FRAMETYPE_LINK_STATISTICS && len >= 10) {
-            onLink({ payload[0], payload[1], payload[2] });
+            onLink({ static_cast<int8_t>(payload[0]),
+                     static_cast<int8_t>(payload[1]), payload[2] });
         } else if (type == CRSF_FRAMETYPE_BATTERY_SENSOR && len >= 8) {
             float v = static_cast<float>((payload[0] << 8) | payload[1]) * 0.1f;
             onBattery({ v });

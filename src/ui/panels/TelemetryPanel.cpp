@@ -39,13 +39,15 @@ TelemetryPanel::TelemetryPanel(AppState& state, QWidget* parent)
     radioTitleRow->addStretch();
     radioLayout->addRow(radioTitleRow);
 
+    // Range covers ELRS's practical RSSI floor (~-130 dBm) to 0 dBm; a raw
+    // CRSF LinkStats byte is a signed dBm value here, not a 0-255 magnitude.
     m_rssi1Bar = new QProgressBar(this);
-    m_rssi1Bar->setRange(0, 100);
+    m_rssi1Bar->setRange(-130, 0);
     m_rssi1Bar->setFormat("%v dBm");
     radioLayout->addRow("RSSI 1:", m_rssi1Bar);
 
     m_rssi2Bar = new QProgressBar(this);
-    m_rssi2Bar->setRange(0, 100);
+    m_rssi2Bar->setRange(-130, 0);
     m_rssi2Bar->setFormat("%v dBm");
     radioLayout->addRow("RSSI 2:", m_rssi2Bar);
 
