@@ -24,7 +24,9 @@
       "PowerShell(git status*)",
       "PowerShell(git merge *)",
       "PowerShell(git cherry-pick *)",
-      "PowerShell(git fetch*)"
+      "PowerShell(git fetch*)",
+      "WebSearch",
+      "WebFetch"
     ]
   }
 }
