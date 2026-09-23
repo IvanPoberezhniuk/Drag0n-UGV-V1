@@ -147,11 +147,14 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
         // the module-bay pin, stock ELRS does not otherwise start its RF timer.
         // A one-shot bind command starts it; ELRS returns to the saved UID after
         // the short bind burst while neutral RC frames continue below.
-        const auto rfStart = buildTxBindCommandPacket();
-        if (m_serial.write(rfStart.data(), rfStart.size())) {
-            spdlog::info("SerialWorker: sent standalone USB RF-start command");
-        } else {
-            spdlog::warn("SerialWorker: failed to send standalone USB RF-start command");
+        if (!m_rfStartSent) {
+            const auto rfStart = buildTxBindCommandPacket();
+            if (m_serial.write(rfStart.data(), rfStart.size())) {
+                spdlog::info("SerialWorker: sent standalone USB RF-start command");
+                m_rfStartSent = true;
+            } else {
+                spdlog::warn("SerialWorker: failed to send standalone USB RF-start command");
+            }
         }
 
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
