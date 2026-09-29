@@ -9,3 +9,6 @@ build_mingw/
 
 # clangd index cache
 /.cache/
+
+# Personal multi-root workspace (machine-local paths/settings)
+/controller.code-workspace
