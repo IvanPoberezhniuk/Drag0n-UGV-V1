@@ -56,7 +56,6 @@ private:
     std::string m_reconnectPort;
     uint32_t    m_reconnectBaud = 0;
     int         m_writeErrors   = 0;
-    bool        m_rfStartSent   = false;
     std::chrono::steady_clock::time_point m_nextReconnect{};
     std::chrono::steady_clock::time_point m_lastLinkStatsLog{};
 };

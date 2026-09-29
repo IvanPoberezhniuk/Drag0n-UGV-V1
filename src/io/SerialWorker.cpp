@@ -147,14 +147,14 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
         // the module-bay pin, stock ELRS does not otherwise start its RF timer.
         // A one-shot bind command starts it; ELRS returns to the saved UID after
         // the short bind burst while neutral RC frames continue below.
-        if (!m_rfStartSent) {
-            const auto rfStart = buildTxBindCommandPacket();
-            if (m_serial.write(rfStart.data(), rfStart.size())) {
-                spdlog::info("SerialWorker: sent standalone USB RF-start command");
-                m_rfStartSent = true;
-            } else {
-                spdlog::warn("SerialWorker: failed to send standalone USB RF-start command");
-            }
+        // Sent on *every* open: closing the port stops the Nomad's RF (bench
+        // log 2026-09-24: after an in-app reconnect without it, LinkStats LQ
+        // stayed 0 indefinitely; a fresh start with it reached LQ 100 in ~2s).
+        const auto rfStart = buildTxBindCommandPacket();
+        if (m_serial.write(rfStart.data(), rfStart.size())) {
+            spdlog::info("SerialWorker: sent standalone USB RF-start command");
+        } else {
+            spdlog::warn("SerialWorker: failed to send standalone USB RF-start command");
         }
 
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
