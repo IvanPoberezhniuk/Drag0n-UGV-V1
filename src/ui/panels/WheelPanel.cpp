@@ -83,8 +83,8 @@ void WheelPanel::paintEvent(QPaintEvent*) {
     float     steering  = ctrl.steering;
     DriveMode driveMode = ctrl.driveMode;
 
-    float leftPow  = throttle - steering * 0.5f;
-    float rightPow = throttle + steering * 0.5f;
+    float leftPow  = throttle + steering * 0.5f;
+    float rightPow = throttle - steering * 0.5f;
     bool  leftOn   = armed && std::abs(leftPow)  > 0.05f;
     bool  rightOn  = armed && std::abs(rightPow) > 0.05f;
 
