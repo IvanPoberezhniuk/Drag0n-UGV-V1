@@ -2,6 +2,7 @@
 #include "io/SerialPort.h"
 #include "core/ConnectionState.h"
 #include "core/StateSnapshot.h"
+#include "ui/RadioSettingsDialog.h"
 #include "ui/Theme.h"
 #include "ui/TooltipHtml.h"
 #include "ui/widgets/HoverInfoIcon.h"
@@ -72,11 +73,20 @@ ConnectionPanel::ConnectionPanel(AppState& state, SerialWorker& worker,
     m_connectBtn->setFixedSize(34, 30);
     portRow->addWidget(m_connectBtn);
 
+    // Radio (ELRS TX module / receiver) settings; needs the link, so refresh()
+    // enables it only while connected.
+    m_settingsBtn = new QPushButton(this);
+    m_settingsBtn->setIcon(QIcon(":/icons/settings.svg"));
+    m_settingsBtn->setFixedSize(34, 30);
+    m_settingsBtn->setEnabled(false);
+    portRow->addWidget(m_settingsBtn);
+
     m_infoIcon = new HoverInfoIcon(this);
     portRow->addWidget(m_infoIcon);
     layout->addLayout(portRow);
 
     connect(m_connectBtn, &QPushButton::clicked, this, [this]() { onConnectClicked(); });
+    connect(m_settingsBtn, &QPushButton::clicked, this, [this]() { openRadioSettings(); });
 
     refreshPortList();
 }
@@ -107,6 +117,11 @@ void ConnectionPanel::onConnectClicked() {
     }
 }
 
+void ConnectionPanel::openRadioSettings() {
+    RadioSettingsDialog dlg(m_state, m_worker, this);
+    dlg.exec();
+}
+
 void ConnectionPanel::refresh() {
     auto conn = snapshot<ConnectionState>(m_state);
 
@@ -122,6 +137,11 @@ void ConnectionPanel::refresh() {
                   conn.status == ConnectionStatus::Connecting;
     m_connectBtn->setIcon(QIcon(active ? ":/icons/plug-connected.svg" : ":/icons/plug-off.svg"));
     m_connectBtn->setToolTip(active ? "Disconnect" : "Connect");
+
+    const bool connected = conn.status == ConnectionStatus::Connected;
+    m_settingsBtn->setEnabled(connected);
+    m_settingsBtn->setToolTip(connected ? "Radio settings (TX module and receiver)"
+                                        : "Radio settings (connect first)");
 
     m_infoIcon->setTooltipHtml(tooltipHtml("Connection", {
         {"Port", conn.portName.empty() ? QString("—") : QString::fromStdString(conn.portName)},

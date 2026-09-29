@@ -3,6 +3,7 @@
 #include "config/AppConfig.h"
 #include "io/SerialPort.h"
 #include "io/CrsfFrameParser.h"
+#include "io/RadioParamClient.h"
 #include <thread>
 #include <atomic>
 #include <queue>
@@ -28,6 +29,10 @@ public:
     void requestConnect(const std::string& port, uint32_t baudrate);
     void requestDisconnect();
 
+    // ELRS TX-module / receiver settings (Radio Settings dialog). Its frames
+    // are written from this worker's loop, behind the RC frame.
+    RadioParamClient& radio() { return m_radio; }
+
 private:
     struct Command {
         enum class Type { Connect, Disconnect } type;
@@ -46,6 +51,7 @@ private:
     const AppConfig& m_config;
     SerialPort       m_serial;
     CrsfFrameParser  m_parser;
+    RadioParamClient m_radio;
 
     std::queue<Command> m_commands;
     std::mutex          m_commandMutex;

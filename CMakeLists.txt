@@ -64,6 +64,9 @@ qt_add_executable(UGVControlStation WIN32
     src/ui/AppStyle.h
     src/ui/SettingsDialog.cpp
     src/ui/SettingsDialog.h
+    src/ui/SettingsChrome.h
+    src/ui/RadioSettingsDialog.cpp
+    src/ui/RadioSettingsDialog.h
     src/ui/CompassBar.cpp
     src/ui/CompassBar.h
     src/ui/DashboardBar.cpp
@@ -97,7 +100,9 @@ qt_add_executable(UGVControlStation WIN32
     src/io/SerialPort.cpp
     src/io/SerialWorker.cpp
     src/io/VideoWorker.cpp
+    src/io/RadioParamClient.cpp
     src/crsf/CrsfPacket.cpp
+    src/crsf/CrsfParams.cpp
     src/input/KeyboardInput.cpp
     src/input/XInputGamepad.cpp
     src/input/InputManager.cpp
@@ -124,4 +129,28 @@ target_link_libraries(UGVControlStation PRIVATE
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_definitions(UGVControlStation PRIVATE NDEBUG)
+endif()
+
+# Qt-free tests for the radio-settings protocol: the CRSF device-parameter codec
+# (src/crsf/CrsfParams.*) and the RadioParamClient state machine, the latter
+# against a simulated TX module / receiver. Off by default; enable with
+# -DUGV_BUILD_TESTS=ON, then run crsf_params_test and radio_param_client_test
+# (exit code 0 = all checks passed).
+option(UGV_BUILD_TESTS "Build the radio-settings protocol tests" OFF)
+if(UGV_BUILD_TESTS)
+    add_executable(crsf_params_test
+        tests/crsf_params_test.cpp
+        src/crsf/CrsfParams.cpp
+        src/crsf/CrsfPacket.cpp
+    )
+    target_include_directories(crsf_params_test PRIVATE src)
+
+    add_executable(radio_param_client_test
+        tests/radio_param_client_test.cpp
+        src/io/RadioParamClient.cpp
+        src/crsf/CrsfParams.cpp
+        src/crsf/CrsfPacket.cpp
+    )
+    target_include_directories(radio_param_client_test PRIVATE src)
+    target_link_libraries(radio_param_client_test PRIVATE spdlog::spdlog)
 endif()

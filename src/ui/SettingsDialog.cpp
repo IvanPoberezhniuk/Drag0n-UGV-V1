@@ -1,5 +1,6 @@
 #include "ui/SettingsDialog.h"
 #include "ui/SettingsKeys.h"
+#include "ui/SettingsChrome.h"
 #include "ui/Theme.h"
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -24,10 +25,6 @@
 #include <QCheckBox>
 #include <QIntValidator>
 
-static const QColor kSidebarBg        {  42,  42,  42 };
-static const QColor kSidebarBorder    {  68,  68,  68 };
-static const QColor kSidebarItemText  { 204, 204, 204 };
-static const QColor kSidebarSelectedBg{  58,  58,  58 };
 static const QColor kPreviewBg        {  30,  30,  30 };
 static const QColor kPreviewText      { 224, 224, 224 };
 static const QColor kUnsetKeyColor    {  80,  80,  80 };
@@ -79,13 +76,7 @@ SettingsDialog::SettingsDialog(AppState& state, QWidget* parent)
     m_sidebar = new QListWidget(this);
     m_sidebar->setFixedWidth(120);
     m_sidebar->setFrameShape(QFrame::NoFrame);
-    m_sidebar->setStyleSheet(QString(
-        "QListWidget { background: %1; border-right: 1px solid %2; }"
-        "QListWidget::item { padding: 10px 12px; color: %3; }"
-        "QListWidget::item:selected { background: %4; color: white; "
-        "  border-left: 3px solid %5; }")
-        .arg(kSidebarBg.name(), kSidebarBorder.name(), kSidebarItemText.name(),
-             kSidebarSelectedBg.name(), Theme::accent.name()));
+    m_sidebar->setStyleSheet(SettingsChrome::sidebarStyleSheet());
     m_sidebar->addItem("UI");
     m_sidebar->addItem("Controls");
     m_sidebar->addItem("Connection");
@@ -121,7 +112,7 @@ SettingsDialog::SettingsDialog(AppState& state, QWidget* parent)
 
     auto* sep = new QFrame(this);
     sep->setFrameShape(QFrame::HLine);
-    sep->setStyleSheet(Theme::colorSS(kSidebarBorder));
+    sep->setStyleSheet(Theme::colorSS(SettingsChrome::sidebarBorder));
     root->addWidget(sep);
 
     auto* btnRow = new QHBoxLayout;

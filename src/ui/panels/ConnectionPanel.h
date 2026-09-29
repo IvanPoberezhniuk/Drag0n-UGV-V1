@@ -18,6 +18,7 @@ public:
 
 private:
     void onConnectClicked();
+    void openRadioSettings();
     void refreshPortList();
 
     AppState&     m_state;
@@ -27,5 +28,6 @@ private:
     LiveDot*       m_statusDot   = nullptr;
     QComboBox*     m_portCombo   = nullptr;
     QPushButton*   m_connectBtn  = nullptr;
+    QPushButton*   m_settingsBtn = nullptr;
     HoverInfoIcon* m_infoIcon    = nullptr;
 };

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <functional>
 #include <algorithm>
+#include <utility>
 #include <spdlog/spdlog.h>
 
 class CrsfFrameParser {
@@ -75,6 +76,15 @@ public:
     using OnRpm       = std::function<void(const RpmSensor&)>;
     using OnDiagnostic = std::function<void(const Diagnostic&)>;
     using OnBms = std::function<void(const BmsTelemetry&)>;
+
+    // Device-parameter replies (0x29 device info, 0x2B parameter entry) that
+    // are addressed to us. `body` starts after the [dest][origin] header.
+    // Set once, before the first feed(); a setter rather than a sixth feed()
+    // argument keeps the existing call site unchanged.
+    using OnExtended = std::function<void(uint8_t type, uint8_t dest, uint8_t origin,
+                                          const uint8_t* body, size_t len)>;
+
+    void setExtendedHandler(OnExtended handler) { m_onExtended = std::move(handler); }
 
     static constexpr size_t kMaxBufSize = 512;
 
@@ -228,8 +238,15 @@ private:
             bms.chargerPlugged     = (payload[46] & 0x04u) != 0u;
             bms.balancerStatus     = (payload[46] >> 3) & 0x03u;
             onBms(bms);
+        } else if ((type == CRSF_FRAMETYPE_DEVICE_INFO ||
+                    type == CRSF_FRAMETYPE_PARAM_ENTRY) &&
+                   len >= 2u && m_onExtended &&
+                   (payload[0] == CRSF_ADDRESS_HANDSET ||
+                    payload[0] == CRSF_ADDRESS_BROADCAST)) {
+            m_onExtended(type, payload[0], payload[1], payload + 2, len - 2u);
         }
     }
 
     std::vector<uint8_t> m_buf;
+    OnExtended m_onExtended;
 };

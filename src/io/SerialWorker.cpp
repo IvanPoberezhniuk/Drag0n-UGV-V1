@@ -81,7 +81,15 @@ bool isStale(Clock::time_point last, long long thresholdMs) {
 } // namespace
 
 SerialWorker::SerialWorker(AppState& state, const AppConfig& config)
-    : m_state(state), m_config(config) {}
+    : m_state(state), m_config(config)
+{
+    // Parameter replies (device info / entries) go to the radio-settings client.
+    m_parser.setExtendedHandler(
+        [this](uint8_t type, uint8_t /*dest*/, uint8_t origin,
+               const uint8_t* body, size_t len) {
+            m_radio.onFrame(type, origin, body, len);
+        });
+}
 
 SerialWorker::~SerialWorker() { stop(); }
 
@@ -120,6 +128,7 @@ void SerialWorker::forceSafeState() {
 
 void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
     if (m_serial.isOpen()) m_serial.close();
+    m_radio.reset();   // any parameter state belonged to the previous link
 
     {
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
@@ -179,6 +188,7 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
 
 void SerialWorker::doDisconnect() {
     m_serial.close();
+    m_radio.reset();
     m_reconnectPort.clear();
     forceSafeState();
     std::lock_guard<std::mutex> lk(m_state.registryMutex);
@@ -400,9 +410,16 @@ void SerialWorker::loop() {
             if (m_serial.write(pkt.data(), pkt.size())) {
                 ++frameCount;
                 m_writeErrors = 0;
+                // Radio-settings traffic rides behind the RC frame: at most one
+                // frame per loop tick and never instead of it. Writes are only
+                // sent while disarmed. A failed write needs no handling here:
+                // the client retries on its own timeout.
+                if (auto frame = m_radio.nextFrame(Clock::now(), !ctrl.armed))
+                    m_serial.write(frame->data(), frame->size());
             } else if (++m_writeErrors >= static_cast<int>(m_config.control.writeErrorThreshold)) {
                 spdlog::warn("SerialWorker: {} write errors — closing for reconnect", m_writeErrors);
                 m_serial.close();
+                m_radio.reset();
                 forceSafeState();
                 m_writeErrors   = 0;
                 m_nextReconnect = Clock::now() + Ms(m_config.serial.reconnectDelayMs);

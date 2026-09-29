@@ -162,6 +162,36 @@ stream remains disarmed and neutral during this startup.
 
 ---
 
+## Radio settings (gear button next to Connect)
+
+With no handset, the ExpressLRS menu an EdgeTX radio shows through its Lua script
+(Packet Rate, Telem Ratio, TX Power, Switch Mode, Antenna Mode, Bind, WiFi, ... and
+the receiver's own options) is available from the gear button beside Connect. It
+opens a Preferences-style popup with a **TX module / Receiver** selector, a sidebar
+of the device's folders, and Apply / OK / Cancel. The pages are built from what the
+device itself reports, so they follow the installed ELRS version.
+
+- Enabled only while connected. Editing and applying need the vehicle **disarmed**;
+  queued writes are discarded if it arms.
+- Edits are staged until Apply / OK; each write is re-read from the device and
+  anything it did not accept is reported.
+- Changes that can drop the link (packet rate, switch mode, antenna mode, WiFi,
+  model match, receiver protocol) ask for confirmation. Receiver failsafe options
+  that would replay the last channel values are disabled.
+- The full parameter list of each device is written to the log when it finishes
+  loading; use it to check the field names the safety guards match on.
+- **Unverified on hardware:** that the Nomad answers parameter requests on its USB
+  port, and that the receiver is reachable through it. If the popup shows "not
+  answering", the ELRS WiFi web UI or Configurator (which need the COM port closed)
+  remain the fallback.
+
+Protocol tests (Qt-free, no hardware): configure with `-DUGV_BUILD_TESTS=ON`, build the
+`crsf_params_test` (frame codec) and `radio_param_client_test` (request state machine
+against a simulated TX module and receiver) targets and run them; exit code 0 means
+all checks passed.
+
+---
+
 ## Project structure
 
 ```
@@ -176,10 +206,12 @@ src/
 │   └── LogBuffer.h           — thread-safe circular log + spdlog sink
 ├── crsf/                     — CRSF protocol
 │   ├── CrsfTypes.h           — frame type constants, RcChannels struct
-│   └── CrsfPacket.cpp/h      — RC_CHANNELS_PACKED encoder, CRC8 DVB-S2
+│   ├── CrsfPacket.cpp/h      — RC_CHANNELS_PACKED encoder, CRC8 DVB-S2
+│   └── CrsfParams.cpp/h      — device-parameter codec (ping/info/entry/read/write)
 ├── io/                       — serial communication
 │   ├── SerialPort.cpp/h      — Win32 COM port wrapper, auto-detect, enumeration
-│   └── SerialWorker.cpp/h    — worker thread: send loop, RX parser, reconnect
+│   ├── SerialWorker.cpp/h    — worker thread: send loop, RX parser, reconnect
+│   └── RadioParamClient.cpp/h — ELRS TX/RX settings request state machine
 ├── input/
 │   ├── KeyboardInput.cpp/h   — Win32 GetAsyncKeyState polling
 │   └── GamepadInput.cpp/h    — SDL2 gamepad (optional)
@@ -190,6 +222,8 @@ src/
 │   └── AppConfig.cpp/h       — JSON config load/defaults
 └── ui/
     ├── MainWindow.cpp/h      — QMainWindow, dock layout, 30 ms poll timer
+    ├── SettingsDialog.cpp/h  — Preferences (UI / Controls / Connection)
+    ├── RadioSettingsDialog.cpp/h — ELRS TX module / receiver settings popup
     └── panels/
         ├── ConnectionPanel   — port selector, connect/disconnect, status
         ├── ControlPanel      — throttle/steering bars, arm, estop, drive mode
