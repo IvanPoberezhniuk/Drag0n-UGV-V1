@@ -46,7 +46,7 @@ void InputManager::poll(AppState& state) {
     // Track most-recently-active source (axes + buttons)
     for (size_t i = 0; i < m_sources.size(); ++i) {
         const auto& f = frames[i];
-        if (f.hasAxes || f.arm || f.disarm || f.estop || f.toggleLights || f.setDriveMode > 0)
+        if (f.hasAxes || f.toggleArm || f.estop || f.toggleLights || f.setDriveMode > 0)
             m_sources[i].lastActivityTime = now;
     }
 
@@ -74,14 +74,13 @@ void InputManager::poll(AppState& state) {
     }
 
     // OR all button events
-    bool arm = false, disarm = false, estop = false, toggleLights = false;
+    bool toggleArm = false, estop = false, toggleLights = false;
     bool clearFault = false;
     bool toggleCruise = false, manualOverride = false;
     int  setDriveMode = 0;
     int  cruiseAdjust = 0;
     for (const auto& f : frames) {
-        arm            |= f.arm;
-        disarm         |= f.disarm;
+        toggleArm      |= f.toggleArm;
         estop          |= f.estop;
         clearFault     |= f.clearFault;
         toggleLights   |= f.toggleLights;
@@ -117,13 +116,12 @@ void InputManager::poll(AppState& state) {
     ctrl.steering    = steering;
     ctrl.lastUpdated = now;
 
-    if (arm) {
+    if (toggleArm && !ctrl.armed) {
         ctrl.armed          = true;
         ctrl.estop          = false;
         safety.estopLatched = false;
         spdlog::info("Input: ARMED");
-    }
-    if (disarm) {
+    } else if (toggleArm) {
         ctrl.armed = false;
         spdlog::info("Input: DISARMED");
     }

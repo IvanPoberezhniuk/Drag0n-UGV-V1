@@ -5,8 +5,10 @@ struct InputFrame {
     float steering     = 0.0f;
     bool  hasAxes      = false;
 
-    bool  arm          = false;
-    bool  disarm       = false;
+    // Arm is a toggle whose direction InputManager resolves against the
+    // shared ControlState::armed -- sources must not track armed themselves,
+    // or a disarm from elsewhere (UI, ESTOP, link loss) desyncs the toggle.
+    bool  toggleArm    = false;
     bool  estop        = false;
     bool  clearFault   = false;
     bool  toggleLights = false;

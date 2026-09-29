@@ -13,7 +13,6 @@ public:
 private:
     int  m_index;
     bool m_connected  = false;
-    bool m_armed      = false;
     int  m_driveMode  = 1;
     std::array<EdgeDetector, 4> m_btnEdge;  // A=0, B=1, Y=2, X=3
     const AppConfig::InputCfg& m_cfg;

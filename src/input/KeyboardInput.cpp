@@ -94,11 +94,7 @@ InputFrame KeyboardInput::poll() {
     f.steering = InputUtils::eased(m_steering);
     f.hasAxes  = (m_throttle != 0.0f || m_steering != 0.0f);
 
-    if (m_edge.rising(KB::ArmDisarm, isDown(b[KB::ArmDisarm]))) {
-        m_armed = !m_armed;
-        if (m_armed) f.arm    = true;
-        else         f.disarm = true;
-    }
+    if (m_edge.rising(KB::ArmDisarm, isDown(b[KB::ArmDisarm]))) f.toggleArm = true;
     if (m_edge.rising(KB::EStop,        isDown(b[KB::EStop])))        f.estop        = true;
     if (m_edge.rising(KB::ClearFault,   isDown(b[KB::ClearFault])))   f.clearFault   = true;
     if (m_edge.rising(KB::ToggleLights, isDown(b[KB::ToggleLights]))) f.toggleLights = true;

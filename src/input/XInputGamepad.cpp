@@ -53,11 +53,7 @@ InputFrame XInputGamepad::poll() {
     bool btnX = (pad.wButtons & XINPUT_GAMEPAD_X) != 0;
 
     // A = arm/disarm toggle
-    if (m_btnEdge[0].rising(btnA)) {
-        m_armed = !m_armed;
-        if (m_armed) f.arm    = true;
-        else         f.disarm = true;
-    }
+    if (m_btnEdge[0].rising(btnA)) f.toggleArm = true;
 
     if (m_btnEdge[1].rising(btnB)) f.estop       = true;
     if (m_btnEdge[2].rising(btnY)) f.toggleLights = true;
