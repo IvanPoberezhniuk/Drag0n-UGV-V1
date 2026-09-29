@@ -101,6 +101,8 @@ InputFrame KeyboardInput::poll() {
     if (m_edge.rising(KB::DriveMode1,   isDown(b[KB::DriveMode1])))   f.setDriveMode = 1;
     if (m_edge.rising(KB::DriveMode2,   isDown(b[KB::DriveMode2])))   f.setDriveMode = 2;
     if (m_edge.rising(KB::DriveMode3,   isDown(b[KB::DriveMode3])))   f.setDriveMode = 3;
+    if (m_edge.rising(KB::TurnMode1,    isDown(b[KB::TurnMode1])))    f.setTurnMode  = 1;
+    if (m_edge.rising(KB::TurnMode2,    isDown(b[KB::TurnMode2])))    f.setTurnMode  = 2;
 
     if (m_edge.rising(KB::ToggleCruise,   isDown(b[KB::ToggleCruise])))   f.toggleCruise = true;
     if (m_edge.rising(KB::CruiseIncrease, isDown(b[KB::CruiseIncrease]))) f.cruiseAdjust = +1;

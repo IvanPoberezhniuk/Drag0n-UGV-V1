@@ -13,6 +13,7 @@ struct InputFrame {
     bool  clearFault   = false;
     bool  toggleLights = false;
     int   setDriveMode = 0;      // 0 = no change, 1–3 = set
+    int   setTurnMode  = 0;      // 0 = no change, 1–2 = set
 
     bool  toggleCruise    = false;
     int   cruiseAdjust    = 0;    // +1/-1 = raise/lower cruise speed by 5%, 0 = no change

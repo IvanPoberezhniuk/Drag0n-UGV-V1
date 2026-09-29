@@ -66,6 +66,19 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
     modeRow->addStretch();
     layout->addLayout(modeRow);
 
+    // Turn mode
+    auto* turnModeRow = new QHBoxLayout;
+    m_turnMode1 = new QRadioButton("All-Wheel Steer", this);
+    m_turnMode2 = new QRadioButton("Center-Pivot Steer", this);
+    m_turnMode1->setChecked(true);
+    auto* turnModeGroup = new QButtonGroup(this);
+    turnModeGroup->addButton(m_turnMode1, 1);
+    turnModeGroup->addButton(m_turnMode2, 2);
+    turnModeRow->addWidget(m_turnMode1);
+    turnModeRow->addWidget(m_turnMode2);
+    turnModeRow->addStretch();
+    layout->addLayout(turnModeRow);
+
     // Lights
     m_lightsSwitch = new ToggleSwitch("Lights", this);
     layout->addWidget(m_lightsSwitch);
@@ -107,6 +120,11 @@ ControlPanel::ControlPanel(AppState& state, QWidget* parent)
         m_state.registry.get<ControlState>(m_state.ugv).driveMode = static_cast<DriveMode>(id);
     });
 
+    connect(turnModeGroup, &QButtonGroup::idClicked, this, [this](int id) {
+        std::lock_guard<std::mutex> lk(m_state.registryMutex);
+        m_state.registry.get<ControlState>(m_state.ugv).turnMode = static_cast<TurnMode>(id);
+    });
+
     connect(m_lightsSwitch, &QAbstractButton::toggled, this, [this](bool checked) {
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
         m_state.registry.get<ControlState>(m_state.ugv).lightsOn = checked;
@@ -138,6 +156,11 @@ void ControlPanel::refresh() {
         case DriveMode::TwoWD:  m_mode1->setChecked(true); break;
         case DriveMode::FourWD: m_mode2->setChecked(true); break;
         case DriveMode::SixWD:  m_mode3->setChecked(true); break;
+    }
+
+    switch (ctrl.turnMode) {
+        case TurnMode::AllWheel:    m_turnMode1->setChecked(true); break;
+        case TurnMode::CenterPivot: m_turnMode2->setChecked(true); break;
     }
 
     m_lightsSwitch->blockSignals(true);

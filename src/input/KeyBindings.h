@@ -23,7 +23,9 @@ struct KeyBindings {
         CruiseIncrease   = 11,
         CruiseDecrease   = 12,
         ClearFault       = 13,
-        Count            = 14
+        TurnMode1        = 14,
+        TurnMode2        = 15,
+        Count            = 16
     };
 
     // Qt::Key values: letters/digits match their ASCII / VK codes directly.
@@ -43,5 +45,7 @@ struct KeyBindings {
         { "Cruise +5%",        0x01000013, 0 }, // Qt::Key_Up
         { "Cruise -5%",        0x01000015, 0 }, // Qt::Key_Down
         { "Clear Motor Fault", 'R',        0 },
+        { "Turn Mode: All-Wheel",    '4',  0 },
+        { "Turn Mode: Center-Pivot", '5',  0 },
     }};
 };

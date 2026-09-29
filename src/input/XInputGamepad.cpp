@@ -51,6 +51,7 @@ InputFrame XInputGamepad::poll() {
     bool btnB = (pad.wButtons & XINPUT_GAMEPAD_B) != 0;
     bool btnY = (pad.wButtons & XINPUT_GAMEPAD_Y) != 0;
     bool btnX = (pad.wButtons & XINPUT_GAMEPAD_X) != 0;
+    bool btnLB = (pad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER) != 0;
 
     // A = arm/disarm toggle
     if (m_btnEdge[0].rising(btnA)) f.toggleArm = true;
@@ -60,6 +61,10 @@ InputFrame XInputGamepad::poll() {
     if (m_btnEdge[3].rising(btnX)) {
         m_driveMode = m_driveMode % 3 + 1;
         f.setDriveMode = m_driveMode;
+    }
+    if (m_btnEdge[4].rising(btnLB)) {
+        m_turnMode = m_turnMode % 2 + 1;
+        f.setTurnMode = m_turnMode;
     }
 
     return f;

@@ -24,6 +24,7 @@ struct AppConfig {
         int arm      = 5;
         int estop    = 6;
         int clearFault = 7;
+        int turnMode = 8;
     } channels;
 
     struct UiCfg {

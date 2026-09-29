@@ -14,6 +14,7 @@ private:
     int  m_index;
     bool m_connected  = false;
     int  m_driveMode  = 1;
-    std::array<EdgeDetector, 4> m_btnEdge;  // A=0, B=1, Y=2, X=3
+    int  m_turnMode   = 1;
+    std::array<EdgeDetector, 5> m_btnEdge;  // A=0, B=1, Y=2, X=3, LB=4
     const AppConfig::InputCfg& m_cfg;
 };

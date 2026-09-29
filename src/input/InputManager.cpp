@@ -46,7 +46,7 @@ void InputManager::poll(AppState& state) {
     // Track most-recently-active source (axes + buttons)
     for (size_t i = 0; i < m_sources.size(); ++i) {
         const auto& f = frames[i];
-        if (f.hasAxes || f.toggleArm || f.estop || f.toggleLights || f.setDriveMode > 0)
+        if (f.hasAxes || f.toggleArm || f.estop || f.toggleLights || f.setDriveMode > 0 || f.setTurnMode > 0)
             m_sources[i].lastActivityTime = now;
     }
 
@@ -78,6 +78,7 @@ void InputManager::poll(AppState& state) {
     bool clearFault = false;
     bool toggleCruise = false, manualOverride = false;
     int  setDriveMode = 0;
+    int  setTurnMode  = 0;
     int  cruiseAdjust = 0;
     for (const auto& f : frames) {
         toggleArm      |= f.toggleArm;
@@ -87,6 +88,7 @@ void InputManager::poll(AppState& state) {
         toggleCruise   |= f.toggleCruise;
         manualOverride |= f.manualOverride;
         if (f.setDriveMode > 0) setDriveMode = f.setDriveMode;
+        if (f.setTurnMode > 0) setTurnMode = f.setTurnMode;
         if (f.cruiseAdjust != 0) cruiseAdjust = f.cruiseAdjust;
     }
 
@@ -143,5 +145,10 @@ void InputManager::poll(AppState& state) {
         ctrl.driveMode = static_cast<DriveMode>(setDriveMode);
         const char* modeNames[] = { "", "2WD", "4WD", "6WD" };
         spdlog::info("Input: drive mode {}", modeNames[setDriveMode]);
+    }
+    if (setTurnMode > 0) {
+        ctrl.turnMode = static_cast<TurnMode>(setTurnMode);
+        const char* turnModeNames[] = { "", "All-Wheel", "Center-Pivot" };
+        spdlog::info("Input: turn mode {}", turnModeNames[setTurnMode]);
     }
 }

@@ -22,5 +22,7 @@ private:
     QRadioButton* m_mode1          = nullptr;
     QRadioButton* m_mode2          = nullptr;
     QRadioButton* m_mode3          = nullptr;
+    QRadioButton* m_turnMode1      = nullptr;
+    QRadioButton* m_turnMode2      = nullptr;
     ToggleSwitch* m_lightsSwitch   = nullptr;
 };

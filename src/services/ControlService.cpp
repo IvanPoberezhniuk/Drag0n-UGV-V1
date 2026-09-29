@@ -24,6 +24,11 @@ RcChannels mapChannels(const ControlState& ctrl,
         case DriveMode::SixWD:  rc.ch[ch.mode - 1] = CH_MAX;    break;
     }
 
+    switch (ctrl.turnMode) {
+        case TurnMode::AllWheel:    rc.ch[ch.turnMode - 1] = CH_MIN; break;
+        case TurnMode::CenterPivot: rc.ch[ch.turnMode - 1] = CH_MAX; break;
+    }
+
     rc.ch[ch.lights - 1] = ctrl.lightsOn ? CH_MAX : CH_MIN;
     rc.ch[ch.arm    - 1] = ctrl.armed    ? CH_MAX : CH_MIN;
     rc.ch[ch.estop  - 1] = ctrl.estop    ? CH_MAX : CH_MIN;
