@@ -165,6 +165,9 @@ void SerialWorker::doConnect(const std::string& port, uint32_t baud) {
         m_reconnectBaud = baud;
         m_writeErrors   = 0;
         m_parser.clear();
+        // The last LQ belongs to the previous link; don't let it count as
+        // "link up" until the module reports again.
+        m_state.registry.get<TelemetryState>(m_state.ugv).lq = 0;
     } else {
         std::lock_guard<std::mutex> lk(m_state.registryMutex);
         auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
@@ -328,17 +331,36 @@ void SerialWorker::loop() {
 
         ControlState ctrl;
         SafetyState  safety;
+        bool linkUp = false;
         {
             std::lock_guard<std::mutex> lk(m_state.registryMutex);
             ctrl   = m_state.registry.get<ControlState>(m_state.ugv);
             safety = m_state.registry.get<SafetyState>(m_state.ugv);
+            const auto& conn = m_state.registry.get<ConnectionState>(m_state.ugv);
+            const auto& t    = m_state.registry.get<TelemetryState>(m_state.ugv);
+            // LQ > 0 is the same "receiver reports link" test the ESP32 uses
+            // (ugv_manual_control.c), which disarms and then needs a fresh
+            // low->high ARM edge -- so the app must drop ARM here too.
+            linkUp = m_serial.isOpen() && conn.status == ConnectionStatus::Connected &&
+                     t.valid && t.lq > 0;
         }
 
+        if (safety.connectionLost == linkUp) {
+            if (linkUp) spdlog::info("Safety: radio link up");
+            else        spdlog::warn("Safety: radio link down — disarming");
+        }
+        safety.connectionLost = !linkUp;
+
+        const bool wasArmed = ctrl.armed;
         SafetyService::apply(ctrl, safety, m_config.control.failsafeTimeoutMs);
 
         {
             std::lock_guard<std::mutex> lk(m_state.registryMutex);
             m_state.registry.get<SafetyState>(m_state.ugv) = safety;
+            // apply() works on a copy; persist a safety-forced disarm so the
+            // ARM button and input toggles see it instead of staying ARMED.
+            if (wasArmed && !ctrl.armed)
+                m_state.registry.get<ControlState>(m_state.ugv).armed = false;
         }
 
         if (m_serial.isOpen()) {
